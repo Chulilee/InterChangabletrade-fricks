@@ -21,6 +21,7 @@ export class TradingEngine {
   private orderBooks: Map<string, Order[]> = new Map();
   private orders: Map<string, Order> = new Map();
   private fills: Map<string, Fill[]> = new Map();
+  private trades: Map<string, Fill[]> = new Map(); // Historical trades per pair
   private eventHandlers: EventHandler[] = [];
   private rateLimits: Map<string, RateLimitEntry> = new Map();
 
@@ -201,6 +202,12 @@ export class TradingEngine {
 
       this.fills.get(incomingOrder.id)!.push(fill);
       this.fills.get(restingOrder.id)!.push(fill);
+      
+      // Add to historical trades for the pair
+      if (!this.trades.has(incomingOrder.pair)) {
+        this.trades.set(incomingOrder.pair, []);
+      }
+      this.trades.get(incomingOrder.pair)!.push(fill);
 
       incomingOrder.filled += matchQuantity;
       incomingOrder.remaining -= matchQuantity;
@@ -375,6 +382,33 @@ export class TradingEngine {
       ordersPerSecond: recentOrders.length,
       totalOrders: pairOrders.length,
       totalFills: pairFills.length,
+    };
+  }
+
+  getTrades(pair: string, page: number = 1, limit: number = 50): {
+    trades: Fill[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  } {
+    const pairTrades = this.trades.get(pair) || [];
+    
+    // Sort trades by timestamp descending (newest first)
+    const sortedTrades = [...pairTrades].sort((a, b) => b.timestamp - a.timestamp);
+    
+    const total = sortedTrades.length;
+    const totalPages = Math.ceil(total / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedTrades = sortedTrades.slice(startIndex, endIndex);
+
+    return {
+      trades: paginatedTrades,
+      total,
+      page,
+      limit,
+      totalPages,
     };
   }
 }
