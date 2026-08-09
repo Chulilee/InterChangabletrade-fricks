@@ -1,5 +1,5 @@
 import { VenueAdapter } from '../types';
-import { TradingEngine } from '../trading-engine';
+import { TradingEngine } from '@/lib/trading-engine';
 import { Order, Fill } from '@/types/trading';
 
 /**
