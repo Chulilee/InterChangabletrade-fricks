@@ -176,7 +176,7 @@ export async function submitLargeOrder(router: OrderRouter) {
 /**
  * Example: Adding a new venue adapter
  */
-export function addNewVenue(router: OrderRouter, tradingEngine: TradingEngine) {
+export function addNewVenue(router: OrderRouter) {
   // Create a new exchange adapter (e.g., for a new exchange like OKX)
   const okxAdapter = new ExchangeSimulatorAdapter({
     venueId: 'okx',
@@ -193,4 +193,5 @@ export function addNewVenue(router: OrderRouter, tradingEngine: TradingEngine) {
   console.log('Added new venue: okx');
 }
 
-export default { setupOrderRouter, submitLargeOrder, addNewVenue };
+const orderRouterExamples = { setupOrderRouter, submitLargeOrder, addNewVenue };
+export default orderRouterExamples;
