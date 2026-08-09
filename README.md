@@ -76,7 +76,6 @@ Generates an issuer + trader, funds them via Friendbot, opens a trustline,
 distributes a token, and places a real DEX offer — printing every transaction
 hash with a stellar.expert link. Set `STELLAR_SECRET_KEY` to reuse a funded
 Testnet account instead of generating a fresh one.
-<!--CONT-->
 
 ## REST API (order-routing simulator)
 
