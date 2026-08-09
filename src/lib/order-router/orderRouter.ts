@@ -8,7 +8,7 @@ import {
   ReconciliationTask,
   RetryPolicy,
 } from './types';
-import { Order, Fill, TradeEvent } from '@/types/trading';
+import { Order, Fill, TradeEvent, OrderStatus } from '@/types/trading';
 import { SplitEqualStrategy } from './strategies/splitEqualStrategy';
 
 /**
@@ -396,12 +396,15 @@ export class OrderRouter {
   /**
    * Update a leg's state from venue status
    */
-  private updateLegFromStatus(leg: RoutingPlanLeg, status: any, plan: RoutingPlan): void {
-    const previousFilled = leg.filled;
-    leg.status = status.status;
-    leg.filled = status.filled;
-    leg.remaining = status.remaining;
-    
+  private updateLegFromStatus(
+    leg: RoutingPlanLeg,
+    status: { status?: OrderStatus; filled?: number; remaining?: number; fills?: Fill[] },
+    plan: RoutingPlan
+  ): void {
+    leg.status = status.status ?? leg.status;
+    leg.filled = status.filled ?? leg.filled;
+    leg.remaining = status.remaining ?? leg.remaining;
+
     if (status.fills) {
       // Add any new fills
       const existingFillIds = new Set(leg.fills.map(f => f.id));

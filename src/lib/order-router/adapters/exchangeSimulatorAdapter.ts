@@ -1,5 +1,5 @@
 import { VenueAdapter } from '../types';
-import { Order, Fill, OrderStatus, OrderSide } from '@/types/trading';
+import { Order, Fill, OrderStatus } from '@/types/trading';
 
 /**
  * Configuration for the exchange simulator
@@ -13,6 +13,12 @@ export interface ExchangeSimulatorConfig {
   failureRate: number; // 0-1, probability of request failure
   supportMarketOrders: boolean;
   supportLimitOrders: boolean;
+  /**
+   * Optional scripted fill schedule. When set, the simulator bypasses its
+   * probabilistic fill logic and fills each order by the listed quantities,
+   * waiting delayMs before applying each step. Used to make tests deterministic.
+   */
+  fillSchedule?: { quantity: number; delayMs: number }[];
 }
 
 /**
@@ -41,6 +47,7 @@ interface SimulatedOrder {
   fills: Fill[];
   idempotencyKey: string;
   createdAt: number;
+  scheduleIndex: number;
 }
 
 /**
@@ -49,7 +56,10 @@ interface SimulatedOrder {
 export class ExchangeSimulatorAdapter implements VenueAdapter {
   private config: ExchangeSimulatorConfig;
   private orders: Map<string, SimulatedOrder> = new Map();
-  private idempotencyCache: Map<string, { orderId: string; result: any }> = new Map();
+  private idempotencyCache: Map<
+    string,
+    { orderId: string; result: { success: boolean; orderId?: string; error?: string } }
+  > = new Map();
   private fillTimers: Map<string, NodeJS.Timeout> = new Map();
 
   constructor(config: Partial<ExchangeSimulatorConfig> = {}) {
@@ -93,8 +103,10 @@ export class ExchangeSimulatorAdapter implements VenueAdapter {
    * Schedule fills for an order
    */
   private scheduleFills(simOrder: SimulatedOrder): void {
-    const delay = this.getRandomDelay();
-    
+    const schedule = this.config.fillSchedule;
+    const delay =
+      schedule && schedule.length > 0 ? schedule[0].delayMs : this.getRandomDelay();
+
     const timer = setTimeout(() => {
       this.processOrderFills(simOrder);
     }, delay);
@@ -110,8 +122,43 @@ export class ExchangeSimulatorAdapter implements VenueAdapter {
       return;
     }
 
-    let remainingToFill = simOrder.remaining;
-    
+    // Deterministic scripted fills: when a schedule is configured, fill by the
+    // listed quantities in order instead of using the probabilistic path.
+    const schedule = this.config.fillSchedule;
+    if (schedule && schedule.length > 0) {
+      const step = schedule[Math.min(simOrder.scheduleIndex, schedule.length - 1)];
+      simOrder.scheduleIndex += 1;
+
+      const fillQuantity = Math.min(step.quantity, simOrder.remaining);
+      if (fillQuantity > 0) {
+        simOrder.fills.push({
+          id: this.generateFillId(),
+          orderId: simOrder.id,
+          makerOrderId: `sim_maker_${Date.now()}`,
+          pair: simOrder.order.pair,
+          side: simOrder.order.side,
+          price: simOrder.order.price,
+          quantity: fillQuantity,
+          timestamp: Date.now(),
+        });
+        simOrder.filled += fillQuantity;
+        simOrder.remaining -= fillQuantity;
+      }
+
+      if (simOrder.remaining <= 0) {
+        simOrder.status = 'filled';
+      } else {
+        simOrder.status = 'partial_fill';
+        const nextStep = schedule[Math.min(simOrder.scheduleIndex, schedule.length - 1)];
+        setTimeout(() => this.processOrderFills(simOrder), nextStep.delayMs);
+      }
+
+      this.orders.set(simOrder.id, simOrder);
+      return;
+    }
+
+    const remainingToFill = simOrder.remaining;
+
     // Check if we fully fill
     if (Math.random() < this.config.fillProbability) {
       // Full fill
@@ -210,6 +257,7 @@ export class ExchangeSimulatorAdapter implements VenueAdapter {
       fills: [],
       idempotencyKey,
       createdAt: Date.now(),
+      scheduleIndex: 0,
     };
 
     this.orders.set(orderId, simOrder);

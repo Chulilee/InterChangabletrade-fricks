@@ -2,7 +2,6 @@ import {
   Order,
   OrderSide,
   OrderType,
-  OrderStatus,
   OrderBook,
   OrderBookLevel,
   Fill,
@@ -68,7 +67,7 @@ export class TradingEngine {
     return `fill_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  private getOrderBook(pair: string): Order[] {
+  private getRawOrderBook(pair: string): Order[] {
     if (!this.orderBooks.has(pair)) {
       this.orderBooks.set(pair, []);
     }
@@ -76,7 +75,7 @@ export class TradingEngine {
   }
 
   private addToOrderBook(order: Order): void {
-    const book = this.getOrderBook(order.pair);
+    const book = this.getRawOrderBook(order.pair);
     const insertIndex = book.findIndex((o) => {
       if (order.side === 'buy') {
         return o.price < order.price;
@@ -92,7 +91,7 @@ export class TradingEngine {
   }
 
   private removeFromOrderBook(order: Order): void {
-    const book = this.getOrderBook(order.pair);
+    const book = this.getRawOrderBook(order.pair);
     const index = book.findIndex((o) => o.id === order.id);
     if (index !== -1) {
       book.splice(index, 1);
@@ -164,7 +163,7 @@ export class TradingEngine {
   }
 
   private matchOrder(incomingOrder: Order): void {
-    const book = this.getOrderBook(incomingOrder.pair);
+    const book = this.getRawOrderBook(incomingOrder.pair);
     const isBuy = incomingOrder.side === 'buy';
 
     for (let i = 0; i < book.length && incomingOrder.remaining > 0; i++) {
@@ -322,7 +321,7 @@ export class TradingEngine {
   }
 
   getOrderBook(pair: string, depth: number = 20): OrderBook {
-    const book = this.getOrderBook(pair);
+    const book = this.getRawOrderBook(pair);
     const bidMap: Map<number, OrderBookLevel> = new Map();
     const askMap: Map<number, OrderBookLevel> = new Map();
 
@@ -363,7 +362,6 @@ export class TradingEngine {
     totalOrders: number;
     totalFills: number;
   } {
-    const book = this.getOrderBook(pair);
     const pairOrders = Array.from(this.orders.values()).filter(
       (o) => o.pair === pair,
     );

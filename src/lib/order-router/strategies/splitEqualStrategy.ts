@@ -1,11 +1,11 @@
-import { RoutingStrategy, RoutingPlanLeg } from '../types';
+import { RoutingStrategy, RoutingPlanLeg, RouterConfig } from '../types';
 import { Order } from '@/types/trading';
 
 /**
  * Equal split strategy - divides order equally across all available venues
  */
 export class SplitEqualStrategy implements RoutingStrategy {
-  buildPlan(order: Order, availableVenues: any[]): RoutingPlanLeg[] {
+  buildPlan(order: Order, availableVenues: RouterConfig['venues']): RoutingPlanLeg[] {
     const legs: RoutingPlanLeg[] = [];
     const venueCount = availableVenues.length;
     

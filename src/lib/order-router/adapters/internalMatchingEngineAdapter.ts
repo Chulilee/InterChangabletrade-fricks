@@ -1,5 +1,5 @@
 import { VenueAdapter } from '../types';
-import { TradingEngine } from '../trading-engine';
+import { TradingEngine } from '@/lib/trading-engine';
 import { Order, Fill } from '@/types/trading';
 
 /**
@@ -8,7 +8,10 @@ import { Order, Fill } from '@/types/trading';
 export class InternalMatchingEngineAdapter implements VenueAdapter {
   private tradingEngine: TradingEngine;
   private venueId: string;
-  private idempotencyCache: Map<string, { orderId: string; result: any }> = new Map();
+  private idempotencyCache: Map<
+    string,
+    { orderId: string; result: { success: boolean; orderId?: string; error?: string } }
+  > = new Map();
 
   constructor(tradingEngine: TradingEngine, venueId: string = 'internal_engine') {
     this.tradingEngine = tradingEngine;
@@ -59,9 +62,11 @@ export class InternalMatchingEngineAdapter implements VenueAdapter {
   }
 
   async cancelOrder(orderId: string): Promise<{ success: boolean; error?: string }> {
-    // Note: Current trading engine doesn't have cancelOrder, this is a placeholder
-    // In a real implementation, this would call tradingEngine.cancelOrder()
-    return { success: false, error: 'Cancellation not implemented for internal engine' };
+    const cancelled = this.tradingEngine.cancelOrder(orderId);
+    if (!cancelled) {
+      return { success: false, error: 'Order could not be cancelled (not found or already completed)' };
+    }
+    return { success: true };
   }
 
   async getStatus(orderId: string): Promise<{
@@ -72,22 +77,18 @@ export class InternalMatchingEngineAdapter implements VenueAdapter {
     fills?: Fill[];
     error?: string;
   }> {
-    // Access private order storage - in a real implementation, add getOrder() to TradingEngine
-    // @ts-ignore - accessing private orders map for demonstration
-    const order = this.tradingEngine.orders?.get(orderId);
-    // @ts-ignore
-    const fills = this.tradingEngine.fills?.get(orderId);
+    const orderStatus = this.tradingEngine.getOrderStatus(orderId);
 
-    if (!order) {
+    if (!orderStatus) {
       return { success: false, error: 'Order not found' };
     }
 
     return {
       success: true,
-      status: order.status,
-      filled: order.filled,
-      remaining: order.remaining,
-      fills: fills || [],
+      status: orderStatus.status,
+      filled: orderStatus.filled,
+      remaining: orderStatus.remaining,
+      fills: orderStatus.fills,
     };
   }
 }

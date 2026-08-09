@@ -13,15 +13,15 @@ export default function DocsPage() {
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js';
     script.onload = () => {
-      // @ts-ignore
+      // @ts-expect-error - SwaggerUIBundle is injected onto window by the CDN script
       window.SwaggerUIBundle({
         url: '/api/docs/openapi.json',
         dom_id: '#swagger-ui',
         deepLinking: true,
         presets: [
-          // @ts-ignore
+          // @ts-expect-error - SwaggerUIBundle is injected onto window by the CDN script
           window.SwaggerUIBundle.presets.apis,
-          // @ts-ignore
+          // @ts-expect-error - SwaggerUIStandalonePreset is injected onto window by the CDN script
           window.SwaggerUIStandalonePreset,
         ],
         layout: 'BaseLayout',

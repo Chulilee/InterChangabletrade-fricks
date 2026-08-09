@@ -9,3 +9,9 @@ export function getTradingEngine(): TradingEngine {
   }
   return tradingEngine;
 }
+
+// Reset the singleton. Used by tests to isolate engine state between cases;
+// not used by the running application.
+export function resetTradingEngine(): void {
+  tradingEngine = null;
+}

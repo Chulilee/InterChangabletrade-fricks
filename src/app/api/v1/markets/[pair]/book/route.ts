@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { validateApiKey, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
 import { getTradingEngine } from '@/lib/trading-instance';
 
@@ -73,8 +73,9 @@ import { getTradingEngine } from '@/lib/trading-instance';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { pair: string } }
+  { params }: { params: Promise<{ pair: string }> }
 ) {
+  const { pair } = await params;
   const authResult = validateApiKey(request);
   if (!authResult.valid) {
     return createErrorResponse(401, 'Unauthorized', authResult.error);
@@ -94,7 +95,7 @@ export async function GET(
   }
 
   const engine = getTradingEngine();
-  const orderBook = engine.getOrderBook(params.pair, depth);
+  const orderBook = engine.getOrderBook(pair, depth);
 
   return createSuccessResponse(orderBook, { 
     apiVersion: 'v1',
