@@ -2,7 +2,6 @@ import {
   Order,
   OrderSide,
   OrderType,
-  OrderStatus,
   OrderBook,
   OrderBookLevel,
   Fill,
@@ -363,7 +362,6 @@ export class TradingEngine {
     totalOrders: number;
     totalFills: number;
   } {
-    const book = this.getRawOrderBook(pair);
     const pairOrders = Array.from(this.orders.values()).filter(
       (o) => o.pair === pair,
     );
