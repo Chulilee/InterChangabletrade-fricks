@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import { NextRequest } from 'next/server';
 import { validateApiKey, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
 import { getTradingEngine } from '@/lib/trading-instance';
@@ -82,7 +85,7 @@ describe('Order API', () => {
 describe('Market Data API', () => {
   it('returns empty order book for new pair', async () => {
     const request = createMockRequest('http://localhost/api/v1/markets/BTC/USDT/book?depth=10');
-    const response = await getOrderBook(request, { params: { pair: 'BTC/USDT' } });
+    const response = await getOrderBook(request, { params: Promise.resolve({ pair: 'BTC/USDT' }) });
     
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -93,7 +96,7 @@ describe('Market Data API', () => {
 
   it('returns paginated trades', async () => {
     const request = createMockRequest('http://localhost/api/v1/markets/BTC/USDT/trades?page=1&limit=50');
-    const response = await getTrades(request, { params: { pair: 'BTC/USDT' } });
+    const response = await getTrades(request, { params: Promise.resolve({ pair: 'BTC/USDT' }) });
     
     expect(response.status).toBe(200);
     const data = await response.json();
