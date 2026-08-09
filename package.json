@@ -2,7 +2,7 @@
   "name": "interchangabletrade-fricks",
   "version": "0.1.0",
   "private": true,
-  "description": "The official frontend for the InterChangableTrade ecosystem built on the Stellar blockchain.",
+  "description": "Web frontend for trading tokenized assets on Stellar. Real wallet auth and on-chain DEX settlement on Testnet.",
   "license": "Apache-2.0",
   "scripts": {
     "dev": "next dev",
@@ -11,9 +11,12 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "jest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "demo:testnet": "node scripts/testnet-demo.mjs"
   },
   "dependencies": {
+    "@creit.tech/stellar-wallets-kit": "^2.5.0",
+    "@stellar/stellar-sdk": "^13.3.0",
     "@tanstack/react-query": "^5.101.3",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
@@ -21,6 +24,7 @@
     "next": "15.1.6",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "swagger-jsdoc": "6.2.8",
     "tailwind-merge": "^3.6.0",
     "ws": "^8.21.1"
   },
@@ -32,6 +36,7 @@
     "@types/node": "22.10.7",
     "@types/react": "19.0.7",
     "@types/react-dom": "19.0.3",
+    "@types/swagger-jsdoc": "6.0.4",
     "@types/ws": "^8.18.1",
     "autoprefixer": "10.4.20",
     "eslint": "9.18.0",
