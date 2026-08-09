@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { validateApiKey, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
 import { getTradingEngine } from '@/lib/trading-instance';
 
