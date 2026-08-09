@@ -81,8 +81,9 @@ import { getTradingEngine } from '@/lib/trading-instance';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { pair: string } }
+  { params }: { params: Promise<{ pair: string }> }
 ) {
+  const { pair } = await params;
   const authResult = validateApiKey(request);
   if (!authResult.valid) {
     return createErrorResponse(401, 'Unauthorized', authResult.error);
@@ -112,7 +113,7 @@ export async function GET(
   }
 
   const engine = getTradingEngine();
-  const result = engine.getTrades(params.pair, page, limit);
+  const result = engine.getTrades(pair, page, limit);
 
   return createSuccessResponse(result.trades, {
     apiVersion: 'v1',

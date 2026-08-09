@@ -84,15 +84,16 @@ import { getTradingEngine } from '@/lib/trading-instance';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const authResult = validateApiKey(request);
   if (!authResult.valid) {
     return createErrorResponse(401, 'Unauthorized', authResult.error);
   }
 
   const engine = getTradingEngine();
-  const orderStatus = engine.getOrderStatus(params.id);
+  const orderStatus = engine.getOrderStatus(id);
 
   if (!orderStatus) {
     return createErrorResponse(404, 'Order not found');
@@ -103,19 +104,20 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const authResult = validateApiKey(request);
   if (!authResult.valid) {
     return createErrorResponse(401, 'Unauthorized', authResult.error);
   }
 
   const engine = getTradingEngine();
-  const success = engine.cancelOrder(params.id);
+  const success = engine.cancelOrder(id);
 
   if (!success) {
     // Check if order exists to provide better error message
-    const orderExists = engine.getOrderStatus(params.id);
+    const orderExists = engine.getOrderStatus(id);
     if (!orderExists) {
       return createErrorResponse(404, 'Order not found');
     }
