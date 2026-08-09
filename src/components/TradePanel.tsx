@@ -3,34 +3,56 @@
 import { useState } from "react";
 import type { Asset, TradeSide } from "@/types/asset";
 import { useWallet } from "@/hooks/useWallet";
-import { submitOrder } from "@/services/assetService";
+import { placeOrder } from "@/services/tradeService";
 import { formatCurrency } from "@/lib/format";
 
+type Status =
+  | { kind: "idle" }
+  | { kind: "submitting" }
+  | { kind: "success"; hash: string; explorerUrl: string }
+  | { kind: "error"; message: string };
+
 export function TradePanel({ asset }: { asset: Asset }) {
-  const { isConnected, connect } = useWallet();
+  const { address, isConnected, isConnecting, connect } = useWallet();
   const [side, setSide] = useState<TradeSide>("buy");
   const [amount, setAmount] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   const parsedAmount = Number(amount) || 0;
   const total = parsedAmount * asset.price;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!isConnected) {
+    if (!isConnected || !address) {
       await connect();
       return;
     }
-    setStatus("Submitting…");
-    const { id } = await submitOrder({
-      assetId: asset.id,
-      side,
-      amount: parsedAmount,
-      price: asset.price,
-    });
-    setStatus(`Order ${id} submitted.`);
-    setAmount("");
+    if (parsedAmount <= 0) return;
+
+    setStatus({ kind: "submitting" });
+    try {
+      const result = await placeOrder({
+        asset,
+        side,
+        amount: parsedAmount,
+        price: asset.price,
+        address,
+      });
+      setStatus({
+        kind: "success",
+        hash: result.hash,
+        explorerUrl: result.explorerUrl,
+      });
+      setAmount("");
+    } catch (err) {
+      setStatus({
+        kind: "error",
+        message: err instanceof Error ? err.message : "Order failed.",
+      });
+    }
   }
+
+  const submitting = status.kind === "submitting";
 
   return (
     <form
@@ -68,19 +90,45 @@ export function TradePanel({ asset }: { asset: Asset }) {
       </label>
 
       <div className="mt-4 flex justify-between text-sm text-brand-muted">
+        <span>Price (XLM)</span>
+        <span className="font-medium text-brand">{asset.price}</span>
+      </div>
+      <div className="mt-1 flex justify-between text-sm text-brand-muted">
         <span>Estimated total</span>
         <span className="font-medium text-brand">{formatCurrency(total)}</span>
       </div>
 
       <button
         type="submit"
-        className="mt-4 w-full rounded-lg bg-brand-accent py-3 font-medium text-white transition hover:opacity-90"
+        disabled={submitting || isConnecting}
+        className="mt-4 w-full rounded-lg bg-brand-accent py-3 font-medium text-white transition hover:opacity-90 disabled:opacity-60"
       >
-        {isConnected ? `${side === "buy" ? "Buy" : "Sell"} ${asset.code}` : "Connect wallet to trade"}
+        {submitting
+          ? "Signing & submitting…"
+          : isConnected
+            ? `${side === "buy" ? "Buy" : "Sell"} ${asset.code}`
+            : isConnecting
+              ? "Connecting…"
+              : "Connect wallet to trade"}
       </button>
 
-      {status && (
-        <p className="mt-3 text-center text-sm text-brand-muted">{status}</p>
+      {status.kind === "success" && (
+        <p className="mt-3 text-center text-sm text-green-600 dark:text-green-400">
+          Order placed on Stellar.{" "}
+          <a
+            href={status.explorerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            View transaction
+          </a>
+        </p>
+      )}
+      {status.kind === "error" && (
+        <p className="mt-3 text-center text-sm text-red-600 dark:text-red-400">
+          {status.message}
+        </p>
       )}
     </form>
   );
