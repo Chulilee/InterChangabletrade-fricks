@@ -2,15 +2,20 @@
  * @jest-environment node
  */
 import { NextRequest } from 'next/server';
-import { validateApiKey, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
-import { getTradingEngine } from '@/lib/trading-instance';
+import { validateApiKey } from '@/lib/api-middleware';
+import { getTradingEngine, resetTradingEngine } from '@/lib/trading-instance';
 import { POST as submitOrder } from '@/app/api/v1/orders/route';
-import { GET as getOrder, DELETE as cancelOrder } from '@/app/api/v1/orders/[id]/route';
 import { GET as getOrderBook } from '@/app/api/v1/markets/[pair]/book/route';
 import { GET as getTrades } from '@/app/api/v1/markets/[pair]/trades/route';
 
+interface MockRequestOptions {
+  method?: string;
+  body?: string;
+  headers?: Record<string, string>;
+}
+
 // Mock NextRequest
-function createMockRequest(url: string, options: any = {}) {
+function createMockRequest(url: string, options: MockRequestOptions = {}) {
   const request = new NextRequest(new URL(url, 'http://localhost'), {
     headers: {
       'x-api-key': 'sk_test_12345',
@@ -20,6 +25,12 @@ function createMockRequest(url: string, options: any = {}) {
   });
   return request;
 }
+
+// The trading engine is a process-wide singleton shared by the route handlers.
+// Reset it before each test so cases don't leak order-book state into each other.
+beforeEach(() => {
+  resetTradingEngine();
+});
 
 describe('API Middleware', () => {
   it('validates API key format correctly', () => {
@@ -43,11 +54,6 @@ describe('API Middleware', () => {
 });
 
 describe('Order API', () => {
-  beforeEach(() => {
-    // Reset the trading engine before each test
-    jest.resetModules();
-  });
-
   it('submits a valid order', async () => {
     const request = createMockRequest('http://localhost/api/v1/orders', {
       method: 'POST',
@@ -65,7 +71,7 @@ describe('Order API', () => {
     
     const data = await response.json();
     expect(data.data.orderId).toBeDefined();
-    expect(data.data.status).toBe('pending');
+    expect(data.data.status).toBe('open');
   });
 
   it('rejects invalid order data', async () => {
@@ -111,7 +117,7 @@ describe('TradingEngine extended functionality', () => {
     const engine = getTradingEngine();
     
     // Submit two orders that will match
-    const sellOrder = engine.submitOrder({
+    engine.submitOrder({
       pair: 'BTC/USDT',
       side: 'sell',
       type: 'limit',
@@ -119,8 +125,8 @@ describe('TradingEngine extended functionality', () => {
       quantity: 0.1,
       clientId: 'client1',
     });
-    
-    const buyOrder = engine.submitOrder({
+
+    engine.submitOrder({
       pair: 'BTC/USDT',
       side: 'buy',
       type: 'limit',

@@ -98,7 +98,8 @@ describe('OrderRouter Unit Tests', () => {
 
   describe('ExchangeSimulatorAdapter', () => {
     it('should generate unique order IDs', async () => {
-      const adapter = new ExchangeSimulatorAdapter({ venueId: 'test_sim' });
+      // failureRate 0 so sendOrder never returns a simulated failure (default is 0.05).
+      const adapter = new ExchangeSimulatorAdapter({ venueId: 'test_sim', failureRate: 0 });
       const order = {
         pair: 'BTC/USD',
         side: 'buy' as const,
@@ -119,7 +120,8 @@ describe('OrderRouter Unit Tests', () => {
     });
 
     it('should respect idempotency keys and return same order ID for same key', async () => {
-      const adapter = new ExchangeSimulatorAdapter({ venueId: 'test_sim' });
+      // failureRate 0 so both sendOrder calls succeed deterministically.
+      const adapter = new ExchangeSimulatorAdapter({ venueId: 'test_sim', failureRate: 0 });
       const order = {
         pair: 'BTC/USD',
         side: 'buy' as const,

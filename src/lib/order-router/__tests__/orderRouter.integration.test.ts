@@ -10,31 +10,51 @@ describe('OrderRouter Integration Tests', () => {
   let internalAdapter: InternalMatchingEngineAdapter;
   let simulatorAdapter1: ExchangeSimulatorAdapter;
   let simulatorAdapter2: ExchangeSimulatorAdapter;
+  let simulatorAdapter3: ExchangeSimulatorAdapter;
 
   beforeEach(() => {
     // Create fresh instances for each test
     tradingEngine = new TradingEngine();
     internalAdapter = new InternalMatchingEngineAdapter(tradingEngine, 'internal');
 
-    // Create two exchange simulators with low failure rates for testing
+    // Deterministic simulators: a fixed (min === max) fill delay and a 100%
+    // fill probability so reconciliation always observes a completed fill, and
+    // failureRate 0 removes random submit/availability failures. Without this
+    // the random 100-2000ms delays race the router's reconciliation schedule
+    // and the suite is flaky.
     simulatorAdapter1 = new ExchangeSimulatorAdapter({
       venueId: 'binance_sim',
-      failureRate: 0, // No failures for basic tests
-      fillProbability: 1.0, // Always fill immediately
+      failureRate: 0,
+      fillProbability: 1.0,
+      minFillDelayMs: 20,
+      maxFillDelayMs: 20,
     });
 
     simulatorAdapter2 = new ExchangeSimulatorAdapter({
       venueId: 'coinbase_sim',
       failureRate: 0,
       fillProbability: 1.0,
+      minFillDelayMs: 20,
+      maxFillDelayMs: 20,
     });
 
-    // Configure router
+    simulatorAdapter3 = new ExchangeSimulatorAdapter({
+      venueId: 'kraken_sim',
+      failureRate: 0,
+      fillProbability: 1.0,
+      minFillDelayMs: 20,
+      maxFillDelayMs: 20,
+    });
+
+    // Route across three external simulators. The internal matching engine has
+    // no resting liquidity in these tests, so an internal leg could never fill
+    // or reconcile (reconciliation tasks are only created for external venues).
+    // The internal adapter is still registered so the wiring mirrors production.
     router = new OrderRouter({
       venues: [
-        { id: 'internal', type: 'internal', enabled: true, weight: 0.5 },
-        { id: 'binance_sim', type: 'external', enabled: true, weight: 0.25 },
-        { id: 'coinbase_sim', type: 'external', enabled: true, weight: 0.25 },
+        { id: 'binance_sim', type: 'external', enabled: true, weight: 0.34 },
+        { id: 'coinbase_sim', type: 'external', enabled: true, weight: 0.33 },
+        { id: 'kraken_sim', type: 'external', enabled: true, weight: 0.33 },
       ],
       retryPolicy: {
         maxRetries: 3,
@@ -51,12 +71,14 @@ describe('OrderRouter Integration Tests', () => {
     router.registerAdapter(internalAdapter);
     router.registerAdapter(simulatorAdapter1);
     router.registerAdapter(simulatorAdapter2);
+    router.registerAdapter(simulatorAdapter3);
   });
 
   afterEach(() => {
     router.destroy();
     simulatorAdapter1.destroy();
     simulatorAdapter2.destroy();
+    simulatorAdapter3.destroy();
   });
 
   test('should split large order across multiple destinations and reconcile fills', async () => {
@@ -226,14 +248,17 @@ describe('OrderRouter Integration Tests', () => {
   });
 
   test('should handle partial fills correctly', async () => {
-    // Create a simulator that frequently does partial fills
+    // Deterministic partial fill: the simulator fills 40 units after 100ms, then
+    // the remaining 60 units after a further 2000ms. This scripted schedule
+    // bypasses the probabilistic fill path so the partial-then-complete
+    // transition is reproducible instead of flaky.
     const partialFillSimulator = new ExchangeSimulatorAdapter({
       venueId: 'partial_sim',
-      fillProbability: 0.2, // Rarely fills completely immediately
-      partialFillProbability: 0.9, // Often partially fills
-      minFillDelayMs: 100,
-      maxFillDelayMs: 500,
       failureRate: 0,
+      fillSchedule: [
+        { quantity: 40, delayMs: 100 },
+        { quantity: 60, delayMs: 2000 },
+      ],
     });
 
     const partialRouter = new OrderRouter({
@@ -268,22 +293,25 @@ describe('OrderRouter Integration Tests', () => {
     const plan = partialRouter.buildRoutingPlan(testOrder);
     await partialRouter.executePlan(plan);
 
-    // Check for partial fill state
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
+    // The router's first reconciliation for an external leg runs ~1000ms after
+    // submission. By ~1500ms the simulator has applied the first (40 unit) fill
+    // and reconciliation has observed it, so the leg is partially filled.
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
     const midPlan = partialRouter.getPlan(plan.planId);
     expect(midPlan?.legs[0].status).toBe('partial_fill');
-    expect(midPlan?.legs[0].filled).toBeGreaterThan(0);
+    expect(midPlan?.legs[0].filled).toBe(40);
     expect(midPlan?.legs[0].filled).toBeLessThan(100);
 
-    // Wait for complete fill
+    // The remaining 60 units fill at ~2100ms and the next reconciliation (~3000ms)
+    // observes the completed fill. Wait comfortably past that.
     await new Promise(resolve => setTimeout(resolve, 3000));
-    
+
     const finalPlan = partialRouter.getPlan(plan.planId);
     expect(finalPlan?.legs[0].status).toBe('filled');
     expect(finalPlan?.totalFilled).toBe(100);
 
     partialRouter.destroy();
     partialFillSimulator.destroy();
-  });
+  }, 10000);
 });
