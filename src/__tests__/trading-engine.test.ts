@@ -218,10 +218,12 @@ describe('TradingEngine', () => {
         clientId: 'taker',
       });
 
-      expect(events).toHaveLength(3);
+      expect(events).toHaveLength(4);
       expect(events[0].type).toBe('order_accepted');
       expect(events[1].type).toBe('order_accepted');
+      // A full match fills both sides: the resting order first, then the incoming order.
       expect(events[2].type).toBe('order_filled');
+      expect(events[3].type).toBe('order_filled');
     });
 
     it('should emit cancel event', () => {
@@ -289,7 +291,11 @@ describe('TradingEngine', () => {
       expect(orders.every((o) => o !== null)).toBe(true);
 
       const orderBook = engine.getOrderBook('XLM/USD');
-      expect(orderBook.bids).toHaveLength(10);
+      // All 10 orders rest at the same price, so the book aggregates them into
+      // a single level: one entry, 10 orders, 100 total quantity.
+      expect(orderBook.bids).toHaveLength(1);
+      expect(orderBook.bids[0].orderCount).toBe(10);
+      expect(orderBook.bids[0].quantity).toBe(100);
     });
   });
 });

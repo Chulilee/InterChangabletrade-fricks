@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import { AuthModule } from '@/lib/auth';
 
 describe('AuthModule', () => {

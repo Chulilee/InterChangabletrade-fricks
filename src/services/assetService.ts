@@ -1,10 +1,14 @@
-import type { Asset, Holding, TradeOrder } from "@/types/asset";
+import type { Asset, Holding } from "@/types/asset";
 import { MOCK_ASSETS } from "./mockData";
 
 /**
- * Asset service. Currently backed by in-memory mock data; the async signatures
- * mirror the eventual InterChangableTrade-Core REST client so callers do not
- * change when the real transport is wired in.
+ * Read-only catalogue/portfolio service. Backed by seed data today; the async
+ * signatures mirror the eventual InterChangableTrade-Core REST client so callers
+ * do not change when the real transport is wired in.
+ *
+ * On-chain actions (wallet connect, order placement, settlement) do NOT live
+ * here — they run against Stellar via `@/services/tradeService` and
+ * `@/lib/stellar/*`, which are browser-only.
  */
 
 const LATENCY_MS = 200;
@@ -29,9 +33,4 @@ export async function getHoldings(): Promise<Holding[]> {
     { asset: MOCK_ASSETS[2], balance: 42 },
   ];
   return delay(holdings);
-}
-
-export async function submitOrder(order: TradeOrder): Promise<{ id: string }> {
-  // TODO: sign with the connected wallet and submit to Soroban.
-  return delay({ id: `order_${order.assetId}_${order.side}` });
 }

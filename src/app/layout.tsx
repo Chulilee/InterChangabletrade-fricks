@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 export const metadata: Metadata = {
   title: "InterChangableTrade",
   description:
-    "The official frontend for the InterChangableTrade ecosystem built on the Stellar blockchain.",
+    "Trade tokenized assets on the Stellar network — real wallet, real on-chain settlement.",
 };
 
 export default function RootLayout({

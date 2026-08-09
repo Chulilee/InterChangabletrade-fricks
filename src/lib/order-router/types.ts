@@ -1,4 +1,4 @@
-import { Order, Fill, OrderStatus, OrderSide, OrderType } from '@/types/trading';
+import { Order, Fill, OrderStatus } from '@/types/trading';
 
 /**
  * Venue types - where orders can be routed
@@ -21,7 +21,7 @@ export interface RoutingDestination {
 export interface RoutingPlanLeg {
   legId: string;
   destination: RoutingDestination;
-  status: 'pending' | 'submitted' | 'partial_fill' | 'filled' | 'cancelled' | 'failed';
+  status: 'pending' | 'open' | 'submitted' | 'partial_fill' | 'filled' | 'cancelled' | 'failed';
   filled: number;
   remaining: number;
   fills: Fill[];
@@ -139,7 +139,7 @@ export interface IdempotencyRecord {
   key: string;
   orderId: string;
   processedAt: number;
-  result: any;
+  result: { success: boolean; orderId?: string; error?: string };
 }
 
 /**

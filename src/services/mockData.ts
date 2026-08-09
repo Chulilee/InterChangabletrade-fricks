@@ -1,15 +1,17 @@
 import type { Asset } from "@/types/asset";
 
 /**
- * Seed data standing in for the InterChangableTrade-Core API. Prices and
- * supplies are illustrative and refreshed by the service layer on read.
+ * Seed catalogue for the marketplace UI. Issuers are real, valid Stellar
+ * accounts so each asset can be turned into an on-chain `Asset(code, issuer)`
+ * and traded on the Testnet DEX. USDC uses Circle's Testnet issuer; the others
+ * are illustrative Testnet issuers. Prices/supplies are display-only.
  */
 export const MOCK_ASSETS: Asset[] = [
   {
     id: "usdc",
     code: "USDC",
     name: "USD Coin",
-    issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    issuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
     category: "stablecoin",
     price: 1.0,
     change24h: 0.01,
@@ -21,7 +23,7 @@ export const MOCK_ASSETS: Asset[] = [
     id: "gold",
     code: "XAU",
     name: "Tokenized Gold",
-    issuer: "GBGOLDXAU7YHZ2QK5W3M4N6P8R9T2V4X6Z8B0D2F4H6J8L0N2P4R6T8",
+    issuer: "GA5YXCZ7FGU65RSEUE42IFMHHQIJWQ4PLUW7NROO6CVM6G7NZH6UJPZG",
     category: "commodity",
     price: 2_385.42,
     change24h: -0.63,
@@ -33,7 +35,7 @@ export const MOCK_ASSETS: Asset[] = [
     id: "acme",
     code: "ACME",
     name: "Acme Corp Equity",
-    issuer: "GAEQUITYACME3H5J7L9N1P3R5T7V9X1Z3B5D7F9H1J3L5N7P9R1T3V5",
+    issuer: "GCZJUALNVSERNNB5TNAYIY44AIML6EJU5PO3IFK7SZYW3PIWNQKE5BLC",
     category: "equity",
     price: 128.75,
     change24h: 2.14,
@@ -45,7 +47,7 @@ export const MOCK_ASSETS: Asset[] = [
     id: "loft",
     code: "LOFT",
     name: "Downtown Loft Fund",
-    issuer: "GAREALESTLOFT4I6K8M0O2Q4S6U8W0Y2A4C6E8G0I2K4M6O8Q0S2U4",
+    issuer: "GCM6VQNUPPNJYKP7OGC6SZLCZR23JCS6YXJBSH7NWJRL3L67QWOY4AHV",
     category: "real-estate",
     price: 512.9,
     change24h: 0.42,

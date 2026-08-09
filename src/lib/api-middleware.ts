@@ -18,7 +18,7 @@ export function validateApiKey(request: NextRequest): { valid: boolean; clientId
 }
 
 // Standard error response format
-export function createErrorResponse(status: number, message: string, details?: any) {
+export function createErrorResponse(status: number, message: string, details?: unknown) {
   return NextResponse.json(
     {
       error: {
@@ -33,7 +33,7 @@ export function createErrorResponse(status: number, message: string, details?: a
 }
 
 // Success response formatter
-export function createSuccessResponse(data: any, metadata?: any) {
+export function createSuccessResponse(data: unknown, metadata?: Record<string, unknown>) {
   return NextResponse.json({
     data,
     metadata: {
