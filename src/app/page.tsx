@@ -1,49 +1,4 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useMarketData } from "@/hooks/useMarketData";
-import { setupMockServer, type Order } from "@/mocks/server";
-import { OrderBook } from "@/components/OrderBook";
-import { RecentTrades } from "@/components/RecentTrades";
-import { OrderEntry } from "@/components/OrderEntry";
-import { UserOrders } from "@/components/UserOrders";
-import { Navbar } from "@/components/Navbar";
-
-export default function TradingDashboard() {
-  const { bids, asks, trades, connected, sendOrder } = useMarketData();
-  const [userOrders, setUserOrders] = useState<Order[]>([]);
-
-  useEffect(() => {
-    setupMockServer();
-  }, []);
-
-  const currentPrice = asks.length > 0 ? asks[0].price - 0.5 : 40000;
-
-  const handlePlaceOrder = (order: Order) => {
-    // Optimistic update
-    setUserOrders(prev => [order, ...prev]);
-    // Send to WS
-    sendOrder(order);
-  };
-
-  const handleCancelOrder = (id: string) => {
-    setUserOrders(prev => prev.map(o => o.id === id ? { ...o, status: "cancelled" } : o));
-    // Usually would send cancel to WS
-  };
-
-  // Simulate receiving fill from WS (a real app would get this via useMarketData)
-  // For the sake of the mock, let's just pretend any order fills after 2 seconds
-  useEffect(() => {
-    const openOrders = userOrders.filter(o => o.status === "open");
-    openOrders.forEach(o => {
-      const timer = setTimeout(() => {
-        setUserOrders(prev => prev.map(order => 
-          order.id === o.id && order.status === "open" ? { ...order, status: "filled" } : order
-        ));
-      }, 2000);
-      return () => clearTimeout(timer);
-    });
-  }, [userOrders]);
+import Link from "next/link";
 
 const stats = [
   { value: "$2.4B", label: "Volume traded" },
@@ -104,7 +59,10 @@ export default function HomePage() {
 
             <div className="mt-10 grid gap-5 sm:grid-cols-3">
               {stats.map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur">
+                <div
+                  key={stat.label}
+                  className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur"
+                >
                   <div className="text-2xl font-bold text-slate-950">{stat.value}</div>
                   <div className="mt-1 text-sm text-slate-500">{stat.label}</div>
                 </div>
@@ -133,7 +91,10 @@ export default function HomePage() {
                   { symbol: "RWA", name: "Real Estate", value: "$58,940", change: "+7.1%" },
                   { symbol: "NFT", name: "Digital Collectibles", value: "$33,520", change: "+2.3%" },
                 ].map((asset) => (
-                  <div key={asset.symbol} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div
+                    key={asset.symbol}
+                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4"
+                  >
                     <div>
                       <div className="font-semibold">{asset.symbol}</div>
                       <div className="text-sm text-slate-400">{asset.name}</div>
@@ -163,12 +124,17 @@ export default function HomePage() {
 
           <div className="mt-10 grid gap-6 md:grid-cols-3">
             {features.map((feature) => (
-              <article key={feature.title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+              <article
+                key={feature.title}
+                className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+              >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-lg text-sky-700">
                   ✦
                 </div>
                 <h3 className="text-xl font-semibold text-slate-900">{feature.title}</h3>
-                <p className="mt-3 text-base leading-7 text-slate-600">{feature.description}</p>
+                <p className="mt-3 text-base leading-7 text-slate-600">
+                  {feature.description}
+                </p>
               </article>
             ))}
           </div>
