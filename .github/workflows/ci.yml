@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - "feat/**"
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  validate:
+    name: Build and validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint project
+        run: npm run lint
+
+      - name: Type check project
+        run: npm run type-check
+
+      - name: Build project
+        run: npm run build
