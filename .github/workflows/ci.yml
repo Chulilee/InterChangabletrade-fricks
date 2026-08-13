@@ -13,9 +13,9 @@ on:
 
 jobs:
   validate:
-    name: Build and validate
+    name: Lint, test, type-check, and build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -30,11 +30,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint project
+      - name: Lint
         run: npm run lint
 
-      - name: Type check project
+      - name: Type check
         run: npm run type-check
 
-      - name: Build project
+      - name: Test
+        run: npm test -- --runInBand
+
+      - name: Build
         run: npm run build
