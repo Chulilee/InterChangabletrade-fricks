@@ -2,10 +2,9 @@
   "name": "interchangabletrade-fricks",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "npm@10.9.2",
   "engines": {
-    "node": "22.10.7",
-    "npm": "10.9.2"
+    "node": ">=22.0.0 <23.0.0",
+    "npm": ">=10.0.0 <12.0.0"
   },
   "description": "Web frontend for trading tokenized assets on Stellar. Real wallet auth and on-chain DEX settlement on Testnet.",
   "license": "Apache-2.0",
