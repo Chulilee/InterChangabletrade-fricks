@@ -37,7 +37,7 @@ export function Checkout() {
       } else {
         setPaymentStatus("Payment failed.");
       }
-    } catch (error) {
+    } catch {
       setPaymentStatus("Payment failed.");
     }
   };

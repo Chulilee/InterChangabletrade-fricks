@@ -15,7 +15,7 @@ export class MockPaymentProvider implements PaymentProvider {
     };
   }
 
-  async handleWebhook(payload: any): Promise<boolean> {
+  async handleWebhook(payload: unknown): Promise<boolean> {
     console.log("MockPaymentProvider: Handling webhook with payload", payload);
     return true;
   }

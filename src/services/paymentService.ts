@@ -2,7 +2,7 @@ import { OrderDetails } from "@/types/order";
 
 export interface PaymentProvider {
   createPaymentIntent(orderDetails: OrderDetails): Promise<PaymentIntent>;
-  handleWebhook(payload: any): Promise<boolean>;
+  handleWebhook(payload: unknown): Promise<boolean>;
 }
 
 export interface PaymentIntent {
@@ -28,7 +28,7 @@ export class PaymentService {
     return this.provider.createPaymentIntent(orderDetails);
   }
 
-  async handleWebhook(payload: any): Promise<boolean> {
+  async handleWebhook(payload: unknown): Promise<boolean> {
     return this.provider.handleWebhook(payload);
   }
 }
