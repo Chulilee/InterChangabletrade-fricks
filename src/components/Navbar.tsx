@@ -4,6 +4,7 @@ import { WalletButton } from "@/components/WalletButton";
 const navLinks = [
   { href: "/marketplace", label: "Marketplace" },
   { href: "/portfolio", label: "Portfolio" },
+  { href: "/analytics", label: "Analytics" },
 ];
 
 export function Navbar() {
