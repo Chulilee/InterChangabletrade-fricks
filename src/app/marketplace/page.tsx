@@ -1,5 +1,6 @@
 import { listAssets } from "@/services/assetService";
 import { AssetCard } from "@/components/AssetCard";
+import { Checkout } from "@/components/Checkout";
 
 export const metadata = {
   title: "Marketplace · InterChangableTrade",
@@ -20,6 +21,9 @@ export default async function MarketplacePage() {
         {assets.map((asset) => (
           <AssetCard key={asset.id} asset={asset} />
         ))}
+      </div>
+      <div className="mt-12">
+        <Checkout />
       </div>
     </section>
   );
