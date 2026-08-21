@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { WalletButton } from "@/components/WalletButton";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const navLinks = [
   { href: "/marketplace", label: "Marketplace" },
@@ -24,6 +25,7 @@ export function Navbar() {
               </li>
             ))}
           </ul>
+          <NotificationBell />
           <WalletButton />
         </div>
       </nav>
