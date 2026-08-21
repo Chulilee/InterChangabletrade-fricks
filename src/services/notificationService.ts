@@ -2,7 +2,6 @@
 
 import type {
   Notification,
-  NotificationCategory,
   NotificationPreferences,
 } from "@/types/notification";
 

@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   addNotification,
   clearAllNotifications,
   deleteNotification,
   getNotifications,
   getPreferences,
-  getUnreadCount,
   markAllAsRead,
   markAsRead,
   markAsUnread,
@@ -63,8 +62,6 @@ export function useNotifications(): UseNotificationsReturn {
     getPreferences,
   );
   const [wsConnected, setWsConnected] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
-
   // Sync on mount and whenever the service store changes
   const refresh = useCallback(() => {
     const all = getNotifications();
