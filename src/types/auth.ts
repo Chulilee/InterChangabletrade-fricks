@@ -25,3 +25,16 @@ export interface SignUpCredentials {
   password: string;
   confirmPassword: string;
 }
+
+/** Payload for updating account-level fields (name, email). */
+export interface AccountUpdate {
+  name?: string;
+  email?: string;
+}
+
+/** Payload for changing the user's password. */
+export interface PasswordChange {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}

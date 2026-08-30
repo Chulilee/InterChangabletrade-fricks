@@ -11,6 +11,12 @@ export interface UserPreferences {
   language: string;
   /** Theme preference. */
   theme: "light" | "dark" | "system";
+  /** Whether to use compact layout (denser spacing). */
+  compactLayout: boolean;
+  /** Whether the user's profile is publicly visible. */
+  showProfile: boolean;
+  /** Whether the user's listings are publicly visible. */
+  showListings: boolean;
 }
 
 export interface UserSettings {
@@ -31,6 +37,12 @@ export interface ProfileUpdate {
   language?: string;
   /** Updated theme. */
   theme?: "light" | "dark" | "system";
+  /** Updated compact layout preference. */
+  compactLayout?: boolean;
+  /** Updated profile visibility. */
+  showProfile?: boolean;
+  /** Updated listing visibility. */
+  showListings?: boolean;
 }
 
 export interface AvatarUploadResult {
@@ -48,6 +60,9 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   emailNotificationsEnabled: false,
   language: "en",
   theme: "system",
+  compactLayout: false,
+  showProfile: true,
+  showListings: true,
 };
 
 /** Maximum avatar file size in bytes (2 MB). */

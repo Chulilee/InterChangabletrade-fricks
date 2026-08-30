@@ -2,10 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ------------------------------------------------------------------ */
+/* Light theme (default)                                               */
+/* ------------------------------------------------------------------ */
+
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
+
+  /* Brand palette */
+  --brand-accent: #0ea5e9;    /* sky-500 */
+  --brand-accent-rgb: 14, 165, 233;
+  --brand-muted: #64748b;     /* slate-500 */
+  --brand-muted-rgb: 100, 116, 139;
 }
+
+/* ------------------------------------------------------------------ */
+/* Dark theme                                                          */
+/* ------------------------------------------------------------------ */
+
+.dark {
+  --background: #0f172a;      /* slate-900 */
+  --foreground: #f1f5f9;      /* slate-100 */
+
+  --brand-accent: #38bdf8;    /* sky-400 (lighter for dark bg) */
+  --brand-accent-rgb: 56, 189, 248;
+  --brand-muted: #94a3b8;     /* slate-400 (lighter for dark bg) */
+  --brand-muted-rgb: 148, 163, 184;
+}
+
+/* ------------------------------------------------------------------ */
+/* Base styles                                                         */
+/* ------------------------------------------------------------------ */
 
 html {
   scroll-behavior: smooth;
@@ -15,9 +43,15 @@ body {
   margin: 0;
   color: var(--foreground);
   background:
-    radial-gradient(circle at top, rgba(14, 165, 233, 0.08), transparent 30%),
-    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    radial-gradient(circle at top, rgba(var(--brand-accent-rgb), 0.08), transparent 30%),
+    linear-gradient(180deg, var(--background) 0%, rgba(var(--brand-accent-rgb), 0.02) 100%);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.dark body,
+.dark {
+  color-scheme: dark;
 }
 
 * {
@@ -25,5 +59,5 @@ body {
 }
 
 ::selection {
-  background: rgba(14, 165, 233, 0.2);
+  background: rgba(var(--brand-accent-rgb), 0.2);
 }

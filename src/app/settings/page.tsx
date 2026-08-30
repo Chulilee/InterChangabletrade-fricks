@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 /** Settings page — delegates to a client component for interactivity. */
 export default function SettingsPage() {
   return (
-    <section className="mx-auto max-w-2xl px-6 py-10">
+    <section className="mx-auto max-w-4xl px-6 py-10">
       <SettingsClient />
     </section>
   );

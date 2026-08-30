@@ -25,6 +25,7 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.25.0",
+    "makeerror": "^1.0.12",
     "next": "15.1.9",
     "react": "19.0.0",
     "react-dom": "19.0.0",

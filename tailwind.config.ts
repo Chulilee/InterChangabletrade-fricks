@@ -4,6 +4,7 @@ const config: Config = {
   content: [
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
@@ -12,6 +13,10 @@ const config: Config = {
         card: "hsl(var(--card))",
         "card-foreground": "hsl(var(--card-foreground))",
         border: "hsl(var(--border))",
+        brand: {
+          accent: "rgb(var(--brand-accent) / <alpha-value>)",
+          muted: "rgb(var(--brand-muted) / <alpha-value>)",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
