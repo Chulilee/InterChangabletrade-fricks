@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { validateApiKey, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
+import { validateApiKey, hasPermission, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
 import { getTradingEngine } from '@/lib/trading-instance';
 
 /**
@@ -87,9 +87,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const authResult = validateApiKey(request);
+  const authResult = await validateApiKey(request);
   if (!authResult.valid) {
     return createErrorResponse(401, 'Unauthorized', authResult.error);
+  }
+  if (!hasPermission(authResult, 'orders', 'read')) {
+    return createErrorResponse(403, 'Forbidden', { required: 'orders:read' });
   }
 
   const engine = getTradingEngine();
@@ -107,9 +110,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const authResult = validateApiKey(request);
+  const authResult = await validateApiKey(request);
   if (!authResult.valid) {
     return createErrorResponse(401, 'Unauthorized', authResult.error);
+  }
+  if (!hasPermission(authResult, 'orders', 'cancel')) {
+    return createErrorResponse(403, 'Forbidden', { required: 'orders:cancel' });
   }
 
   const engine = getTradingEngine();
