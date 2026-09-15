@@ -100,8 +100,23 @@ export function setupMockServer() {
       }
     });
 
+    // Simulate periodic notification events
+    const notifTitles = [
+      { title: "Order filled", body: "Your buy order for 0.5 BTC/USDT has been filled.", category: "trade" as const },
+      { title: "New message", body: "You have a new message from a counterparty.", category: "message" as const },
+      { title: "System maintenance", body: "Scheduled maintenance at 02:00 UTC.", category: "system" as const },
+      { title: "Order partially filled", body: "Your sell order is 60% filled.", category: "order" as const },
+      { title: "Wallet funded", body: "Your Testnet wallet has been funded with 10,000 XLM.", category: "wallet" as const },
+    ];
+    const notifInterval = setInterval(() => {
+      if (socket.readyState !== WebSocket.OPEN) return;
+      const pick = notifTitles[Math.floor(Math.random() * notifTitles.length)];
+      socket.send(JSON.stringify({ type: "notification", payload: { ...pick, priority: Math.random() > 0.8 ? "high" : "medium" } }));
+    }, 15_000);
+
     socket.on("close", () => {
       clearInterval(interval);
+      clearInterval(notifInterval);
     });
   });
 }
