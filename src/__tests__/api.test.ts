@@ -111,6 +111,12 @@ describe('Order API', () => {
     const data = await response.json();
     expect(data.data.orderId).toBeDefined();
     expect(data.data.status).toBe('open');
+
+    // Orders are routed through the OrderRouter; expose the plan.
+    expect(data.data.routing.planId).toBeDefined();
+    expect(data.data.routing.legs).toHaveLength(1);
+    expect(data.data.routing.legs[0].venueId).toBe('internal_main');
+    expect(data.data.routing.legs[0].orderId).toBe(data.data.orderId);
   });
 
   it('rejects invalid order data', async () => {
