@@ -1,8 +1,17 @@
 import { Server, WebSocket } from "mock-socket";
+import type { OrderBookEntry, TradeEntry, OrderSide, OrderType } from "@/types/trading";
 
-export type OrderBookEntry = { price: number; size: number; total: number };
-export type TradeEntry = { id: string; price: number; size: number; side: "buy" | "sell"; time: number };
-export type Order = { id: string; side: "buy" | "sell"; price: number; size: number; status: "open" | "filled" | "cancelled"; type?: "limit" | "market" };
+export type { OrderBookEntry, TradeEntry };
+
+/** A user order tracked by the trading dashboard. */
+export interface Order {
+  id: string;
+  side: OrderSide;
+  price: number;
+  size: number;
+  status: "open" | "filled" | "cancelled";
+  type?: OrderType;
+}
 
 export function setupMockServer() {
   if (typeof window === "undefined") return; // Only run on client side
