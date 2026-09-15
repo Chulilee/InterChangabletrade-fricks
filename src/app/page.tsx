@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TradingDashboard } from "@/components/TradingDashboard";
 
 const stats = [
   { value: "$2.4B", label: "Volume traded" },
@@ -110,6 +111,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <TradingDashboard />
 
       <section className="border-t border-slate-200 bg-slate-50/60">
         <div className="mx-auto max-w-6xl px-6 py-16">

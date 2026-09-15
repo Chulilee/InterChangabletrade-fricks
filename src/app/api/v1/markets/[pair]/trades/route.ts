@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { validateApiKey, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
+import { validateApiKey, hasPermission, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
 import { getTradingEngine } from '@/lib/trading-instance';
 
 /**
@@ -84,9 +84,12 @@ export async function GET(
   { params }: { params: Promise<{ pair: string }> }
 ) {
   const { pair } = await params;
-  const authResult = validateApiKey(request);
+  const authResult = await validateApiKey(request);
   if (!authResult.valid) {
     return createErrorResponse(401, 'Unauthorized', authResult.error);
+  }
+  if (!hasPermission(authResult, 'trades', 'read')) {
+    return createErrorResponse(403, 'Forbidden', { required: 'trades:read' });
   }
 
   const { searchParams } = new URL(request.url);

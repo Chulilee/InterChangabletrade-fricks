@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { validateApiKey, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
+import { validateApiKey, hasPermission, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
 import { getTradingEngine } from '@/lib/trading-instance';
 import { OrderSide, OrderType } from '@/types/trading';
 
@@ -91,10 +91,15 @@ import { OrderSide, OrderType } from '@/types/trading';
  *         description: Rate limit exceeded
  */
 export async function POST(request: NextRequest) {
-  // Validate API key
-  const authResult = validateApiKey(request);
+  // Validate API key and check create permission
+  const authResult = await validateApiKey(request);
   if (!authResult.valid) {
     return createErrorResponse(401, 'Unauthorized', authResult.error);
+  }
+  if (!hasPermission(authResult, 'orders', 'create')) {
+    return createErrorResponse(403, 'Forbidden', {
+      required: 'orders:create',
+    });
   }
 
   try {

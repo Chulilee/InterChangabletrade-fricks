@@ -76,7 +76,7 @@ const openapiSpec = {
           },
         },
         responses: {
-          '201': {
+          '200': {
             description: 'Order created successfully',
           },
           '400': {

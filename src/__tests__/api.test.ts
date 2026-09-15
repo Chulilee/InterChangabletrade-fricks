@@ -2,7 +2,8 @@
  * @jest-environment node
  */
 import { NextRequest } from 'next/server';
-import { validateApiKey } from '@/lib/api-middleware';
+import { validateApiKey, hasPermission } from '@/lib/api-middleware';
+import { getAuthModule } from '@/lib/auth-instance';
 import { getTradingEngine, resetTradingEngine } from '@/lib/trading-instance';
 import { POST as submitOrder } from '@/app/api/v1/orders/route';
 import { GET as getOrderBook } from '@/app/api/v1/markets/[pair]/book/route';
@@ -33,23 +34,61 @@ beforeEach(() => {
 });
 
 describe('API Middleware', () => {
-  it('validates API key format correctly', () => {
-    const validRequest = new NextRequest('http://localhost/api/v1/orders', {
-      headers: { 'x-api-key': 'sk_test_123' },
+  it('accepts the documented demo key as an admin client', async () => {
+    const demoRequest = new NextRequest('http://localhost/api/v1/orders', {
+      headers: { 'x-api-key': 'sk_test_12345' },
     });
-    const validResult = validateApiKey(validRequest);
-    expect(validResult.valid).toBe(true);
-    expect(validResult.clientId).toBe('client_test_123');
+    const demoResult = await validateApiKey(demoRequest);
+    expect(demoResult.valid).toBe(true);
+    expect(demoResult.clientId).toBe('client_demo');
+    expect(demoResult.roles).toContain('admin');
 
     const missingKeyRequest = new NextRequest('http://localhost/api/v1/orders', {});
-    const missingResult = validateApiKey(missingKeyRequest);
+    const missingResult = await validateApiKey(missingKeyRequest);
     expect(missingResult.valid).toBe(false);
 
-    const invalidFormatRequest = new NextRequest('http://localhost/api/v1/orders', {
-      headers: { 'x-api-key': 'invalid_key' },
+    const invalidKeyRequest = new NextRequest('http://localhost/api/v1/orders', {
+      headers: { 'x-api-key': 'sk_not_a_real_key' },
     });
-    const invalidResult = validateApiKey(invalidFormatRequest);
+    const invalidResult = await validateApiKey(invalidKeyRequest);
     expect(invalidResult.valid).toBe(false);
+  });
+
+  it('validates keys issued by the AuthModule and maps roles', async () => {
+    const auth = getAuthModule();
+    const { rawKey } = await auth.createApiKey({
+      name: 'Route Test Key',
+      roles: ['trader'],
+    });
+
+    const request = new NextRequest('http://localhost/api/v1/orders', {
+      headers: { 'x-api-key': rawKey },
+    });
+    const result = await validateApiKey(request);
+    expect(result.valid).toBe(true);
+    expect(result.roles).toEqual(['trader']);
+
+    // Revocation must take effect immediately.
+    const keyId = result.authContext!.apiKeyId;
+    expect(auth.revokeApiKey(keyId)).toBe(true);
+    const revoked = await validateApiKey(request);
+    expect(revoked.valid).toBe(false);
+  });
+
+  it('enforces role permissions per resource and action', async () => {
+    const auth = getAuthModule();
+    const { rawKey } = await auth.createApiKey({
+      name: 'Read Only Key',
+      roles: ['read-only'],
+    });
+    const request = new NextRequest('http://localhost/api/v1/orders', {
+      headers: { 'x-api-key': rawKey },
+    });
+    const result = await validateApiKey(request);
+
+    expect(hasPermission(result, 'orders', 'read')).toBe(true);
+    expect(hasPermission(result, 'orders', 'create')).toBe(false);
+    expect(hasPermission(result, 'portfolio', 'read')).toBe(true);
   });
 });
 

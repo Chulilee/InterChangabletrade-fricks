@@ -99,7 +99,7 @@ OpenAPI 3.0 and is independent of the on-chain DEX path above.
 await fetch('/api/v1/orders', {
   method: 'POST',
   headers: { 'x-api-key': 'sk_test_12345', 'Content-Type': 'application/json' },
-  body: JSON.stringify({ pair: 'XLM/USD', side: 'buy', type: 'limit', price: '0.50', amount: '100' }),
+  body: JSON.stringify({ pair: 'BTC/USDT', side: 'buy', type: 'limit', price: 50000, quantity: 0.1 }),
 });
 ```
 
