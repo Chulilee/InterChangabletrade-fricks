@@ -121,8 +121,10 @@ npm run test:e2e     # Playwright end-to-end
 ```
 
 ## Related repositories
-
+- **[InterChangableTrade-Protocol](https://github.com/Chulilee/InterChangableTrade-Protocol)** 
+  Soroban smart contracts (access-control, escrow, marketplace, etc.)
 - InterChangableTrade-Core — market data & account API (in progress)
+- **[InterChangableTrade-Corel](https://github.com/Chulilee/InterChangableTrade-Core)** 
 - InterChangableTrade-Protocol — asset/issuance specifications (in progress)
 
 ## Contributing

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Asset, TradeSide } from "@/types/asset";
 import { useWallet } from "@/hooks/useWallet";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { placeOrder } from "@/services/tradeService";
 import { formatCurrency } from "@/lib/format";
 
@@ -14,6 +15,7 @@ type Status =
 
 export function TradePanel({ asset }: { asset: Asset }) {
   const { address, isConnected, isConnecting, connect } = useWallet();
+  const { track } = useAnalytics();
   const [side, setSide] = useState<TradeSide>("buy");
   const [amount, setAmount] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -42,6 +44,13 @@ export function TradePanel({ asset }: { asset: Asset }) {
         kind: "success",
         hash: result.hash,
         explorerUrl: result.explorerUrl,
+      });
+      track("trade_complete", {
+        asset: asset.code,
+        side,
+        amount: parsedAmount,
+        price: asset.price,
+        wallet: address,
       });
       setAmount("");
     } catch (err) {
