@@ -38,3 +38,8 @@ export function getOrderRouter(engine: TradingEngine): OrderRouter {
   }
   return cached.router;
 }
+
+export function resetOrderRouter(): void {
+  cached?.router.destroy();
+  cached = null;
+}

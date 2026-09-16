@@ -13,17 +13,19 @@ export interface Order {
   type?: OrderType;
 }
 
-export function setupMockServer() {
+export function setupMockServer(): (() => void) | undefined {
   if (typeof window === "undefined") return; // Only run on client side
 
   // Avoid creating multiple servers during fast refresh
   const globalWindow = window as unknown as { __mockServer?: Server };
   if (globalWindow.__mockServer) {
     globalWindow.__mockServer.close();
+    delete globalWindow.__mockServer;
   }
 
   const mockServer = new Server("ws://localhost:8080");
   globalWindow.__mockServer = mockServer;
+  const connectionCleanup = new Set<() => void>();
 
   mockServer.on("connection", (socket) => {
     console.log("Mock WebSocket connected");
@@ -89,13 +91,15 @@ export function setupMockServer() {
         }
       }
     }, 300); // Fast updates to show off the UI
+    const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>();
 
     socket.on("message", (data) => {
       try {
         const msg = JSON.parse(data as string);
         if (msg.type === "place_order") {
           // Simulate order matching
-          setTimeout(() => {
+          const timeout = setTimeout(() => {
+            pendingTimeouts.delete(timeout);
             if (socket.readyState === WebSocket.OPEN) {
               socket.send(JSON.stringify({ 
                 type: "order_filled", 
@@ -103,6 +107,7 @@ export function setupMockServer() {
               }));
             }
           }, 2000);
+          pendingTimeouts.add(timeout);
         }
       } catch {
         // ignore
@@ -111,6 +116,25 @@ export function setupMockServer() {
 
     socket.on("close", () => {
       clearInterval(interval);
+      pendingTimeouts.forEach(clearTimeout);
+      pendingTimeouts.clear();
+      connectionCleanup.delete(cleanup);
     });
+
+    const cleanup = () => {
+      clearInterval(interval);
+      pendingTimeouts.forEach(clearTimeout);
+      pendingTimeouts.clear();
+    };
+    connectionCleanup.add(cleanup);
   });
+
+  return () => {
+    connectionCleanup.forEach(cleanup => cleanup());
+    connectionCleanup.clear();
+    mockServer.close();
+    if (globalWindow.__mockServer === mockServer) {
+      delete globalWindow.__mockServer;
+    }
+  };
 }

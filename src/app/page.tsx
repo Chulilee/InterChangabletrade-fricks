@@ -14,7 +14,7 @@ export default function TradingDashboard() {
   const [userOrders, setUserOrders] = useState<Order[]>([]);
 
   useEffect(() => {
-    setupMockServer();
+    return setupMockServer();
   }, []);
 
   const currentPrice = asks.length > 0 ? asks[0].price - 0.5 : 40000;
@@ -35,14 +35,13 @@ export default function TradingDashboard() {
   // For the sake of the mock, let's just pretend any order fills after 2 seconds
   useEffect(() => {
     const openOrders = userOrders.filter(o => o.status === "open");
-    openOrders.forEach(o => {
-      const timer = setTimeout(() => {
+    const timers = openOrders.map(o => setTimeout(() => {
         setUserOrders(prev => prev.map(order => 
           order.id === o.id && order.status === "open" ? { ...order, status: "filled" } : order
         ));
-      }, 2000);
-      return () => clearTimeout(timer);
-    });
+      }, 2000));
+
+    return () => timers.forEach(timer => clearTimeout(timer));
   }, [userOrders]);
 
   return (
