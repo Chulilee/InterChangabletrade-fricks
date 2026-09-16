@@ -59,6 +59,25 @@ export interface TradeEvent {
   timestamp: number;
 }
 
+/**
+ * UI-facing order-book level. Aggregated depth for one price point with
+ * running totals; the REST OrderBook-level (types above) is the raw form.
+ */
+export interface OrderBookEntry {
+  price: number;
+  size: number;
+  total: number;
+}
+
+/** A recent trade as displayed in the ticker tape. */
+export interface TradeEntry {
+  id: string;
+  price: number;
+  size: number;
+  side: OrderSide;
+  time: number;
+}
+
 export interface OrderStatusResponse {
   orderId: string;
   status: OrderStatus;

@@ -76,9 +76,7 @@ export default function HomePage() {
             <div className="relative rounded-[2rem] border border-slate-200 bg-slate-950 p-5 text-white shadow-2xl shadow-slate-400/20">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    Portfolio
-                  </p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Portfolio</p>
                   <h2 className="mt-2 text-2xl font-bold">$184,260</h2>
                 </div>
                 <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300">
@@ -135,9 +133,7 @@ export default function HomePage() {
                   ✦
                 </div>
                 <h3 className="text-xl font-semibold text-slate-900">{feature.title}</h3>
-                <p className="mt-3 text-base leading-7 text-slate-600">
-                  {feature.description}
-                </p>
+                <p className="mt-3 text-base leading-7 text-slate-600">{feature.description}</p>
               </article>
             ))}
           </div>

@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { validateApiKey, hasPermission, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
 import { getTradingEngine } from '@/lib/trading-instance';
-import { OrderSide, OrderType } from '@/types/trading';
+import { getOrderRouter } from '@/lib/order-router/instance';
+import { OrderSide, OrderType, Order } from '@/types/trading';
 
 /**
  * @openapi
@@ -133,31 +134,66 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(400, 'Quantity must be greater than 0');
     }
 
-    // Submit order to trading engine
+    // Route the order through the OrderRouter. With the single internal
+    // venue configured it executes against the matching engine; additional
+    // venues (split/failover) activate by registering more adapters.
     const engine = getTradingEngine();
-    const order = engine.submitOrder({
+    const router = getOrderRouter(engine);
+
+    const draftOrder = {
       pair,
       side: side as OrderSide,
       type: type as OrderType,
       price: price || 0,
       quantity,
+      filled: 0,
+      remaining: quantity,
+      status: 'pending' as const,
       clientId: authResult.clientId!,
-    });
+      timestamp: Date.now(),
+    };
+
+    const plan = router.buildRoutingPlan(draftOrder as Order);
+    const result = await router.executePlan(plan);
+
+    if (!result.success) {
+      return createErrorResponse(
+        429,
+        'Order rejected by all venues',
+        result.errors,
+      );
+    }
+
+    // The internal adapter mirrors submitOrder's id semantics; resolve the
+    // engine's canonical record so the response exposes final fill state.
+    const submittedLeg = plan.legs.find((leg) => leg.destination.orderId);
+    const order = submittedLeg?.destination.orderId
+      ? engine.getOrderStatus(submittedLeg.destination.orderId)
+      : null;
 
     if (!order) {
-      return createErrorResponse(429, 'Rate limit exceeded or order rejected');
+      return createErrorResponse(500, 'Order submitted but status unavailable');
     }
 
     return createSuccessResponse(
       {
-        orderId: order.id,
+        orderId: order.orderId,
         status: order.status,
-        pair: order.pair,
-        side: order.side,
-        price: order.price,
-        quantity: order.quantity,
+        pair,
+        side,
+        price: price || 0,
+        quantity,
         remaining: order.remaining,
         filled: order.filled,
+        routing: {
+          planId: plan.planId,
+          legs: plan.legs.map((leg) => ({
+            venueId: leg.destination.venueId,
+            orderId: leg.destination.orderId,
+            quantity: leg.destination.quantity,
+            status: leg.status,
+          })),
+        },
       },
       { apiVersion: 'v1' }
     );

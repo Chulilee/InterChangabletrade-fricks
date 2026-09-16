@@ -1,4 +1,5 @@
 import { TradingEngine } from './trading-engine';
+import { resetOrderRouter } from './order-router/instance';
 
 // Singleton instance of the TradingEngine to maintain state across API requests
 let tradingEngine: TradingEngine | null = null;
@@ -13,5 +14,6 @@ export function getTradingEngine(): TradingEngine {
 // Reset the singleton. Used by tests to isolate engine state between cases;
 // not used by the running application.
 export function resetTradingEngine(): void {
+  resetOrderRouter();
   tradingEngine = null;
 }
