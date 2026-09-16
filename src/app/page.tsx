@@ -25,11 +25,23 @@ const features = [
   },
 ];
 
-  useEffect(() => {
-    return setupMockServer();
-  }, []);
-
-  const currentPrice = asks.length > 0 ? asks[0].price - 0.5 : 40000;
+export default function HomePage() {
+  return (
+    <main className="relative overflow-hidden">
+      <section className="mx-auto max-w-6xl px-6 pb-20 pt-16 sm:pt-20">
+        <div className="grid items-center gap-12 lg:grid-cols-[1.2fr_0.8fr]">
+          <div>
+            <p className="mb-5 inline-flex items-center rounded-full border border-brand-accent/30 bg-brand-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-accent">
+              Powered by Stellar &amp; Soroban
+            </p>
+            <h1 className="max-w-xl text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
+              Trade the future of tokenized assets.
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
+              InterChangableTrade brings together portfolio management, market
+              discovery, and secure on-chain transactions in one elegant
+              experience.
+            </p>
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
               <Link
@@ -59,18 +71,18 @@ const features = [
             </div>
           </div>
 
-  // Simulate receiving fill from WS (a real app would get this via useMarketData)
-  // For the sake of the mock, let's just pretend any order fills after 2 seconds
-  useEffect(() => {
-    const openOrders = userOrders.filter(o => o.status === "open");
-    const timers = openOrders.map(o => setTimeout(() => {
-        setUserOrders(prev => prev.map(order => 
-          order.id === o.id && order.status === "open" ? { ...order, status: "filled" } : order
-        ));
-      }, 2000));
-
-    return () => timers.forEach(timer => clearTimeout(timer));
-  }, [userOrders]);
+          <div className="relative">
+            <div className="absolute -inset-6 rounded-[2rem] bg-gradient-to-br from-sky-200 via-indigo-100 to-slate-200 blur-3xl" />
+            <div className="relative rounded-[2rem] border border-slate-200 bg-slate-950 p-5 text-white shadow-2xl shadow-slate-400/20">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Portfolio</p>
+                  <h2 className="mt-2 text-2xl font-bold">$184,260</h2>
+                </div>
+                <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300">
+                  +12.4%
+                </span>
+              </div>
 
               <div className="mt-6 space-y-4">
                 {[
@@ -121,9 +133,7 @@ const features = [
                   ✦
                 </div>
                 <h3 className="text-xl font-semibold text-slate-900">{feature.title}</h3>
-                <p className="mt-3 text-base leading-7 text-slate-600">
-                  {feature.description}
-                </p>
+                <p className="mt-3 text-base leading-7 text-slate-600">{feature.description}</p>
               </article>
             ))}
           </div>

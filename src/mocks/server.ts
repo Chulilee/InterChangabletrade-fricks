@@ -130,6 +130,7 @@ export function setupMockServer(): (() => void) | undefined {
 
     socket.on("close", () => {
       clearInterval(interval);
+      clearInterval(notifInterval);
       pendingTimeouts.forEach(clearTimeout);
       pendingTimeouts.clear();
       connectionCleanup.delete(cleanup);
@@ -137,6 +138,7 @@ export function setupMockServer(): (() => void) | undefined {
 
     const cleanup = () => {
       clearInterval(interval);
+      clearInterval(notifInterval);
       pendingTimeouts.forEach(clearTimeout);
       pendingTimeouts.clear();
     };
