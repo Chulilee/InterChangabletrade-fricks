@@ -39,7 +39,7 @@ export function TradingDashboard() {
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-accent">
           Live market
         </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">BTC/USD</h1>
+        <h2 className="mt-2 text-3xl font-bold tracking-tight">BTC/USD</h2>
         <p className="mt-2 text-brand-muted">
           Trade with a live order book and manage your open orders.
         </p>

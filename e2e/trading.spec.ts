@@ -5,7 +5,7 @@ test('Trading Dashboard User Journey', async ({ page }) => {
   await page.goto('/');
 
   // Verify components render
-  await expect(page.locator('h1', { hasText: 'BTC/USD' })).toBeVisible();
+  await expect(page.locator('h2', { hasText: 'BTC/USD' })).toBeVisible();
   await expect(page.locator('h3', { hasText: 'Order Book' })).toBeVisible();
   await expect(page.locator('h3', { hasText: 'Order Entry' })).toBeVisible();
   await expect(page.locator('h3', { hasText: 'My Orders' })).toBeVisible();
