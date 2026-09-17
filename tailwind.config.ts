@@ -7,6 +7,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        brand: {
+          // Sky-based brand palette. `accent`/`muted` keep the legacy names
+          // used across the app (text-brand-accent, text-brand-muted, ...).
+          DEFAULT: "#0ea5e9",
+          accent: "#0ea5e9",
+          muted: "#64748b",
+        },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: "hsl(var(--card))",
@@ -37,8 +44,13 @@ const config: Config = {
         "flash-green": "flashGreen 1s ease-out",
         "flash-red": "flashRed 1s ease-out",
         "fade-in": "fadeIn 0.2s ease-out",
+        "fade-up": "fadeUp 0.6s ease-out both",
       },
       keyframes: {
+        fadeUp: {
+          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
         flashGreen: {
           "0%": { backgroundColor: "rgba(34, 197, 94, 0.5)" },
           "100%": { backgroundColor: "transparent" },
