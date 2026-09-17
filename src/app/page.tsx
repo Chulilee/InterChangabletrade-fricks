@@ -1,5 +1,15 @@
 import Link from "next/link";
-import { ArrowRight, ChartLine, Layers, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  ChartLine,
+  Check,
+  Globe,
+  Layers,
+  ShieldCheck,
+  Sparkles,
+  Wallet,
+  Zap,
+} from "lucide-react";
 import { TradingDashboard } from "@/components/TradingDashboard";
 
 const stats = [
@@ -27,6 +37,34 @@ const features = [
     description:
       "Built for Stellar-native workflows with wallet support and transparent asset data.",
   },
+];
+
+const steps = [
+  {
+    icon: Wallet,
+    title: "Connect your wallet",
+    description:
+      "Link any Stellar wallet in seconds. Your keys stay with you — always.",
+  },
+  {
+    icon: Globe,
+    title: "Discover assets",
+    description:
+      "Browse curated tokenized real-world and digital assets with transparent, on-chain data.",
+  },
+  {
+    icon: Zap,
+    title: "Trade in seconds",
+    description:
+      "Place orders against a live order book and settle directly on the Stellar network.",
+  },
+];
+
+const highlights = [
+  "Self-custody wallet sign-in",
+  "Soroban smart contract settlement",
+  "Real-time order book & analytics",
+  "No hidden fees",
 ];
 
 export default function HomePage() {
@@ -182,6 +220,54 @@ export default function HomePage() {
       <TradingDashboard />
 
       {/* ------------------------------------------------------------------ */}
+      {/* How it works                                                        */}
+      {/* ------------------------------------------------------------------ */}
+      <section
+        aria-labelledby="how-it-works-heading"
+        className="mx-auto max-w-6xl px-6 py-16"
+      >
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-accent">
+            How it works
+          </p>
+          <h2
+            id="how-it-works-heading"
+            className="mt-4 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl"
+          >
+            From wallet to trade in three steps.
+          </h2>
+        </div>
+
+        <ol className="mt-12 grid gap-6 md:grid-cols-3">
+          {steps.map((step, index) => {
+            const StepIcon = step.icon;
+            return (
+              <li
+                key={step.title}
+                className="relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+              >
+                <span
+                  aria-hidden="true"
+                  className="absolute right-5 top-4 text-5xl font-black text-slate-100"
+                >
+                  {index + 1}
+                </span>
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+                  <StepIcon aria-hidden="true" className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900">
+                  {step.title}
+                </h3>
+                <p className="mt-3 text-base leading-7 text-slate-600">
+                  {step.description}
+                </p>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
       {/* Why InterChangableTrade                                             */}
       {/* ------------------------------------------------------------------ */}
       <section
@@ -221,6 +307,68 @@ export default function HomePage() {
                 </article>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Closing CTA                                                         */}
+      {/* ------------------------------------------------------------------ */}
+      <section
+        aria-labelledby="cta-heading"
+        className="mx-auto max-w-6xl px-6 py-16"
+      >
+        <div className="relative overflow-hidden rounded-[2rem] bg-slate-950 px-6 py-14 text-center text-white shadow-2xl shadow-slate-300/50 sm:px-12">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+          >
+            <div className="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-sky-500/25 blur-3xl" />
+            <div className="absolute -bottom-24 -right-16 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl" />
+          </div>
+
+          <div className="relative">
+            <h2
+              id="cta-heading"
+              className="mx-auto max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl"
+            >
+              Ready to trade on-chain?
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-lg leading-8 text-slate-300">
+              Create an account, connect your Stellar wallet, and place your
+              first order in minutes.
+            </p>
+
+            <ul className="mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-slate-300">
+              {highlights.map((highlight) => (
+                <li key={highlight} className="flex items-center gap-2">
+                  <Check
+                    aria-hidden="true"
+                    className="h-4 w-4 text-emerald-400"
+                  />
+                  {highlight}
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
+              <Link
+                href="/sign-up"
+                className="group inline-flex items-center justify-center gap-2 rounded-xl bg-sky-500 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-sky-500/30 transition hover:-translate-y-0.5 hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400"
+              >
+                Create free account
+                <ArrowRight
+                  aria-hidden="true"
+                  className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                />
+              </Link>
+              <Link
+                href="/marketplace"
+                className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-6 py-3.5 text-base font-semibold text-white backdrop-blur transition hover:border-white/40 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
+              >
+                Browse assets first
+              </Link>
+            </div>
           </div>
         </div>
       </section>
