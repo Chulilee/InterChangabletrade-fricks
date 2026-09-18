@@ -15,9 +15,11 @@ body {
   margin: 0;
   color: var(--foreground);
   background:
-    radial-gradient(circle at top, rgba(14, 165, 233, 0.08), transparent 30%),
-    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(14, 165, 233, 0.06), transparent 70%),
+    linear-gradient(180deg, #fbfcfe 0%, #f6f8fb 60%, #f2f5f9 100%);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 * {
@@ -25,5 +27,21 @@ body {
 }
 
 ::selection {
-  background: rgba(14, 165, 233, 0.2);
+  background: rgba(14, 165, 233, 0.16);
+}
+
+/* Elegant thin horizontal rule with a fading gradient. */
+.rule-fade {
+  background-image: linear-gradient(
+    to right,
+    transparent,
+    rgb(15 23 42 / 0.14),
+    transparent
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up {
+    animation: none;
+  }
 }
