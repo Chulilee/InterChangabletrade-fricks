@@ -6,6 +6,16 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        // Elegant editorial serif for display type. Upgrades automatically
+        // if a webfont (e.g. Fraunces) is self-hosted later.
+        display: [
+          '"Fraunces"',
+          'Georgia',
+          '"Times New Roman"',
+          'serif',
+        ],
+      },
       colors: {
         brand: {
           // Sky-based brand palette. `accent`/`muted` keep the legacy names
