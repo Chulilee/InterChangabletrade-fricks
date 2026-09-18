@@ -35,12 +35,15 @@ export function TradingDashboard() {
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-12">
-      <div className="mb-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-accent">
+      <div className="mb-10">
+        <p className="inline-flex items-center gap-3 text-xs font-medium uppercase tracking-[0.28em] text-sky-700">
+          <span aria-hidden="true" className="h-px w-8 bg-sky-600/60" />
           Live market
         </p>
-        <h2 className="mt-2 text-3xl font-bold tracking-tight">BTC/USD</h2>
-        <p className="mt-2 text-brand-muted">
+        <h2 className="mt-4 font-display text-4xl font-medium tracking-tight">
+          BTC/USD
+        </h2>
+        <p className="mt-2 text-[15px] text-brand-muted">
           Trade with a live order book and manage your open orders.
         </p>
       </div>
