@@ -11,6 +11,16 @@ import {
   Zap,
 } from "lucide-react";
 import { TradingDashboard } from "@/components/TradingDashboard";
+import {
+  Drift,
+  Float,
+  MotionRoot,
+  Reveal,
+  RevealGroup,
+  Spin,
+  StaggerItem,
+  StaggerItemLi,
+} from "@/components/LandingMotion";
 
 const stats = [
   { value: "$2.4B", label: "Volume traded" },
@@ -73,6 +83,7 @@ const highlights = [
 export default function HomePage() {
   return (
     <main>
+      <MotionRoot>
       {/* ------------------------------------------------------------------ */}
       {/* Hero                                                                */}
       {/* ------------------------------------------------------------------ */}
@@ -84,13 +95,23 @@ export default function HomePage() {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 -z-10"
         >
-          <div className="absolute -top-40 left-1/2 h-[30rem] w-[60rem] -translate-x-1/2 rounded-full bg-sky-200/30 blur-3xl" />
-          <div className="absolute right-[8%] top-48 h-64 w-64 rounded-full bg-indigo-200/25 blur-3xl" />
+          <Drift className="absolute -top-40 left-1/2" y={12} duration={16}>
+            <div className="h-[30rem] w-[60rem] -translate-x-1/2 rounded-full bg-sky-200/30 blur-3xl" />
+          </Drift>
+          <Drift
+            className="absolute right-[8%] top-48 h-64 w-64"
+            x={-20}
+            y={14}
+            duration={18}
+          >
+            <div className="h-full w-full rounded-full bg-indigo-200/25 blur-3xl" />
+          </Drift>
         </div>
 
         <div className="mx-auto max-w-6xl px-6 pb-20 pt-20 sm:pb-24 sm:pt-28">
           <div className="grid items-center gap-14 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="animate-fade-up">
+            <RevealGroup>
+              <StaggerItem>
               <p className="mb-6 inline-flex items-center gap-3 text-xs font-medium uppercase tracking-[0.28em] text-slate-500">
                 <span
                   aria-hidden="true"
@@ -98,7 +119,9 @@ export default function HomePage() {
                 />
                 Powered by Stellar &amp; Soroban
               </p>
+              </StaggerItem>
 
+              <StaggerItem>
               <h1
                 id="hero-heading"
                 className="max-w-xl font-display text-5xl leading-[1.08] tracking-tight text-slate-950 sm:text-6xl lg:text-[4.25rem]"
@@ -109,13 +132,17 @@ export default function HomePage() {
                 </em>
                 .
               </h1>
+              </StaggerItem>
 
+              <StaggerItem>
               <p className="mt-7 max-w-lg text-lg leading-8 text-slate-600">
                 InterChangableTrade brings together portfolio management,
                 market discovery, and secure on-chain transactions in one
                 elegant experience — your keys, your assets, your markets.
               </p>
+              </StaggerItem>
 
+              <StaggerItem>
               <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Link
                   href="/marketplace"
@@ -134,7 +161,9 @@ export default function HomePage() {
                   View portfolio
                 </Link>
               </div>
+              </StaggerItem>
 
+              <StaggerItem>
               <dl className="mt-14 grid max-w-lg grid-cols-3 gap-8">
                 {stats.map((stat) => (
                   <div
@@ -150,10 +179,12 @@ export default function HomePage() {
                   </div>
                 ))}
               </dl>
-            </div>
+              </StaggerItem>
+            </RevealGroup>
 
             {/* Portfolio preview card */}
-            <div className="relative animate-fade-up [animation-delay:150ms]">
+            <Reveal className="relative" delay={0.15}>
+              <Float>
               <div
                 aria-hidden="true"
                 className="absolute -inset-8 rounded-[3rem] bg-gradient-to-br from-sky-100 via-indigo-50 to-slate-100 blur-2xl"
@@ -228,7 +259,8 @@ export default function HomePage() {
                   ))}
                 </ul>
               </div>
-            </div>
+              </Float>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -242,7 +274,9 @@ export default function HomePage() {
       <div aria-hidden="true" className="mx-auto max-w-6xl px-6">
         <div className="flex items-center gap-4">
           <span className="rule-fade h-px flex-1" />
-          <Sparkles className="h-4 w-4 text-sky-600/60" />
+          <Spin duration={22}>
+            <Sparkles className="h-4 w-4 text-sky-600/60" />
+          </Spin>
           <span className="rule-fade h-px flex-1" />
         </div>
       </div>
@@ -254,7 +288,7 @@ export default function HomePage() {
         aria-labelledby="how-it-works-heading"
         className="mx-auto max-w-6xl px-6 py-20 sm:py-24"
       >
-        <div className="max-w-2xl">
+        <Reveal className="max-w-2xl">
           <p className="inline-flex items-center gap-3 text-xs font-medium uppercase tracking-[0.28em] text-sky-700">
             <span aria-hidden="true" className="h-px w-8 bg-sky-600/60" />
             How it works
@@ -267,13 +301,16 @@ export default function HomePage() {
             <em className="font-light italic text-slate-700">in three steps</em>
             .
           </h2>
-        </div>
+        </Reveal>
 
-        <ol className="mt-14 grid gap-10 md:grid-cols-3 md:gap-8">
+        <RevealGroup
+          as="ol"
+          className="mt-14 grid gap-10 md:grid-cols-3 md:gap-8"
+        >
           {steps.map((step) => {
             const StepIcon = step.icon;
             return (
-              <li
+              <StaggerItemLi
                 key={step.title}
                 className="group border-t border-slate-300/70 pt-6"
               >
@@ -295,10 +332,10 @@ export default function HomePage() {
                 <p className="mt-3 text-[15px] leading-7 text-slate-600">
                   {step.description}
                 </p>
-              </li>
+              </StaggerItemLi>
             );
           })}
-        </ol>
+        </RevealGroup>
       </section>
 
       {/* ------------------------------------------------------------------ */}
@@ -309,7 +346,7 @@ export default function HomePage() {
         className="border-y border-slate-200/80 bg-white/50"
       >
         <div className="mx-auto max-w-6xl px-6 py-20 sm:py-24">
-          <div className="mx-auto max-w-2xl text-center">
+          <Reveal className="mx-auto max-w-2xl text-center">
             <p className="inline-flex items-center justify-center gap-3 text-xs font-medium uppercase tracking-[0.28em] text-sky-700">
               <span aria-hidden="true" className="h-px w-8 bg-sky-600/60" />
               Why InterChangableTrade
@@ -325,16 +362,14 @@ export default function HomePage() {
               </em>
               .
             </h2>
-          </div>
+          </Reveal>
 
-          <div className="mt-16 grid gap-px overflow-hidden rounded-3xl border border-slate-200 bg-slate-200/70 md:grid-cols-3">
+          <RevealGroup className="mt-16 grid gap-px overflow-hidden rounded-3xl border border-slate-200 bg-slate-200/70 md:grid-cols-3">
             {features.map((feature) => {
               const FeatureIcon = feature.icon;
               return (
-                <article
-                  key={feature.title}
-                  className="bg-white/80 p-8 backdrop-blur transition hover:bg-white"
-                >
+                <StaggerItem key={feature.title}>
+                <article className="bg-white/80 p-8 backdrop-blur transition hover:bg-white">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full border border-sky-200 bg-sky-50 text-sky-700">
                     <FeatureIcon aria-hidden="true" className="h-5 w-5" />
                   </div>
@@ -345,9 +380,10 @@ export default function HomePage() {
                     {feature.description}
                   </p>
                 </article>
+                </StaggerItem>
               );
             })}
-          </div>
+          </RevealGroup>
         </div>
       </section>
 
@@ -363,12 +399,16 @@ export default function HomePage() {
             aria-hidden="true"
             className="pointer-events-none absolute inset-0"
           >
-            <div className="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-sky-500/15 blur-3xl" />
-            <div className="absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-indigo-500/10 blur-3xl" />
+            <Drift className="absolute -left-24 -top-24 h-80 w-80" x={30} y={20} duration={16}>
+              <div className="h-full w-full rounded-full bg-sky-500/15 blur-3xl" />
+            </Drift>
+            <Drift className="absolute -bottom-28 -right-20 h-80 w-80" x={-26} y={-18} duration={19}>
+              <div className="h-full w-full rounded-full bg-indigo-500/10 blur-3xl" />
+            </Drift>
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           </div>
 
-          <div className="relative">
+          <Reveal>
             <p className="text-xs font-medium uppercase tracking-[0.28em] text-slate-400">
               Begin today
             </p>
@@ -414,9 +454,10 @@ export default function HomePage() {
                 Browse assets first
               </Link>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
+      </MotionRoot>
     </main>
   );
 }

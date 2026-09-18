@@ -39,9 +39,3 @@ body {
     transparent
   );
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-fade-up {
-    animation: none;
-  }
-}
