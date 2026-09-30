@@ -1,5 +1,5 @@
 import { TradingEngine } from '@/lib/trading-engine';
-import type { Order } from '@/types/trading';
+import type { Order, TradeEvent } from '@/types/trading';
 
 /**
  * Multi-level maker matching.
@@ -218,5 +218,64 @@ describe('TradingEngine multi-level matching', () => {
     expect(book.bids[0].quantity).toBe(8);
     expect(book.bids[1].price).toBe(0.48);
     expect(book.bids[1].orderCount).toBe(1);
+  });
+});
+
+describe('TradingEngine sweep events', () => {
+  let engine: TradingEngine;
+  let events: TradeEvent[];
+
+  beforeEach(() => {
+    engine = new TradingEngine();
+    events = [];
+    engine.onEvent((event) => events.push(event));
+
+    for (const [index, price] of [0.5, 0.51, 0.52].entries()) {
+      engine.submitOrder({
+        pair: 'XLM/USD',
+        side: 'sell',
+        type: 'limit',
+        price,
+        quantity: 10,
+        clientId: `maker-${index}`,
+      });
+    }
+    events.length = 0;
+  });
+
+  it('emits one lifecycle event per maker the sweep touched', () => {
+    engine.submitOrder({
+      pair: 'XLM/USD',
+      side: 'buy',
+      type: 'market',
+      price: 0.5,
+      quantity: 25,
+      clientId: 'taker',
+    });
+
+    expect(events.map((e) => e.type)).toEqual([
+      'order_accepted',
+      'order_filled',
+      'order_filled',
+      'order_partial_fill',
+      'order_filled',
+    ]);
+  });
+
+  it('never emits a zero-quantity fill event during a sweep', () => {
+    engine.submitOrder({
+      pair: 'XLM/USD',
+      side: 'buy',
+      type: 'market',
+      price: 0.5,
+      quantity: 25,
+      clientId: 'taker',
+    });
+
+    const fills = events.filter((e) => e.type !== 'order_accepted');
+    expect(fills.length).toBeGreaterThan(0);
+    for (const event of fills) {
+      expect(event.quantity).toBeGreaterThan(0);
+    }
   });
 });
