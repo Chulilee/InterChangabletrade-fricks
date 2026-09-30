@@ -25,11 +25,19 @@ function trustline(
   };
 }
 
-/** A liquidity pool position: a real Horizon entry with no asset code or issuer. */
-function liquidityPool(balance = "1234.5678901"): HorizonBalanceEntry {
+/**
+ * A liquidity pool position: a real Horizon entry with no asset code or issuer.
+ *
+ * Deliberately not annotated as `HorizonBalanceEntry`. That interface
+ * describes only the fields the parser reads, and a liquidity pool entry has a
+ * field of its own that the parser must never reach for, so the fixture keeps
+ * its own inferred shape and is only assignable to it at the call site.
+ */
+function liquidityPool(balance = "1234.5678901") {
   return {
     asset_type: "liquidity_pool",
-    liquidity_pool_id: "dd7b1ab831c2733309e6df255ce91a758c1c8c62d3304d5e9f6f24e4b2f1f2e",
+    liquidity_pool_id:
+      "dd7b1ab831c2733309e6df255ce91a758c1c8c62d3304d5e9f6f24e4b2f1f2e",
     balance,
   };
 }
