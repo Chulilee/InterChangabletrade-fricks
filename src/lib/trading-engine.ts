@@ -182,61 +182,7 @@ export class TradingEngine {
         }
       }
 
-      const matchQuantity = Math.min(
-        incomingOrder.remaining,
-        restingOrder.remaining,
-      );
-      const matchPrice = restingOrder.price;
-
-      const fill: Fill = {
-        id: this.generateFillId(),
-        orderId: incomingOrder.id,
-        makerOrderId: restingOrder.id,
-        pair: incomingOrder.pair,
-        side: incomingOrder.side,
-        price: matchPrice,
-        quantity: matchQuantity,
-        timestamp: Date.now(),
-      };
-
-      this.fills.get(incomingOrder.id)!.push(fill);
-      this.fills.get(restingOrder.id)!.push(fill);
-      
-      // Add to historical trades for the pair
-      if (!this.trades.has(incomingOrder.pair)) {
-        this.trades.set(incomingOrder.pair, []);
-      }
-      this.trades.get(incomingOrder.pair)!.push(fill);
-
-      incomingOrder.filled += matchQuantity;
-      incomingOrder.remaining -= matchQuantity;
-      restingOrder.filled += matchQuantity;
-      restingOrder.remaining -= matchQuantity;
-
-      if (restingOrder.remaining === 0) {
-        restingOrder.status = 'filled';
-        this.removeFromOrderBook(restingOrder);
-        this.emit({
-          type: 'order_filled',
-          orderId: restingOrder.id,
-          side: restingOrder.side,
-          price: matchPrice,
-          quantity: restingOrder.quantity,
-          remaining: 0,
-          timestamp: Date.now(),
-        });
-      } else {
-        restingOrder.status = 'partial_fill';
-        this.emit({
-          type: 'order_partial_fill',
-          orderId: restingOrder.id,
-          side: restingOrder.side,
-          price: matchPrice,
-          quantity: matchQuantity,
-          remaining: restingOrder.remaining,
-          timestamp: Date.now(),
-        });
-      }
+      this.applyFill(incomingOrder, restingOrder);
     }
 
     if (incomingOrder.remaining === 0) {
@@ -273,6 +219,75 @@ export class TradingEngine {
         incomingOrder.status = 'filled';
       }
     }
+  }
+
+  /**
+   * Record a single maker fill against the incoming order.
+   *
+   * Owns everything that happens once a maker has been selected: fill
+   * creation, trade-tape bookkeeping, quantity updates on both sides, the
+   * maker's status transition and the removal of an exhausted maker from the
+   * book. Returns `true` when the maker was fully consumed and therefore
+   * unlinked from the order book.
+   */
+  private applyFill(incomingOrder: Order, restingOrder: Order): boolean {
+    const matchQuantity = Math.min(
+      incomingOrder.remaining,
+      restingOrder.remaining,
+    );
+    const matchPrice = restingOrder.price;
+
+    const fill: Fill = {
+      id: this.generateFillId(),
+      orderId: incomingOrder.id,
+      makerOrderId: restingOrder.id,
+      pair: incomingOrder.pair,
+      side: incomingOrder.side,
+      price: matchPrice,
+      quantity: matchQuantity,
+      timestamp: Date.now(),
+    };
+
+    this.fills.get(incomingOrder.id)!.push(fill);
+    this.fills.get(restingOrder.id)!.push(fill);
+
+    // Add to historical trades for the pair
+    if (!this.trades.has(incomingOrder.pair)) {
+      this.trades.set(incomingOrder.pair, []);
+    }
+    this.trades.get(incomingOrder.pair)!.push(fill);
+
+    incomingOrder.filled += matchQuantity;
+    incomingOrder.remaining -= matchQuantity;
+    restingOrder.filled += matchQuantity;
+    restingOrder.remaining -= matchQuantity;
+
+    if (restingOrder.remaining === 0) {
+      restingOrder.status = 'filled';
+      this.removeFromOrderBook(restingOrder);
+      this.emit({
+        type: 'order_filled',
+        orderId: restingOrder.id,
+        side: restingOrder.side,
+        price: matchPrice,
+        quantity: restingOrder.quantity,
+        remaining: 0,
+        timestamp: Date.now(),
+      });
+      return true;
+    }
+
+    restingOrder.status = 'partial_fill';
+    this.emit({
+      type: 'order_partial_fill',
+      orderId: restingOrder.id,
+      side: restingOrder.side,
+      price: matchPrice,
+      quantity: matchQuantity,
+      remaining: restingOrder.remaining,
+      timestamp: Date.now(),
+    });
+    return false;
   }
 
   cancelOrder(orderId: string): boolean {
