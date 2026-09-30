@@ -6,17 +6,12 @@ import {
   FeeBumpTransaction,
 } from "@stellar/stellar-sdk";
 import { stellarConfig } from "./config";
+import { toBalances, type Balance } from "./balances";
+
+export type { Balance } from "./balances";
 
 /** Shared Horizon client pointed at the configured network. */
 export const horizon = new Horizon.Server(stellarConfig.horizonUrl);
-
-export interface Balance {
-  /** Asset code, or "XLM" for the native lumen. */
-  code: string;
-  /** Issuer public key, or null for native. */
-  issuer: string | null;
-  balance: string;
-}
 
 /** A trading asset expressed as code/issuer. Native XLM has a null issuer. */
 export interface AssetRef {
@@ -50,14 +45,7 @@ export async function accountExists(publicKey: string): Promise<boolean> {
 
 export async function getBalances(publicKey: string): Promise<Balance[]> {
   const account = await horizon.loadAccount(publicKey);
-  return account.balances.map((b) => {
-    if (b.asset_type === "native") {
-      return { code: "XLM", issuer: null, balance: b.balance };
-    }
-    // credit_alphanum4 | credit_alphanum12
-    const line = b as Horizon.HorizonApi.BalanceLineAsset;
-    return { code: line.asset_code, issuer: line.asset_issuer, balance: line.balance };
-  });
+  return toBalances(account.balances);
 }
 
 export async function getNativeBalance(publicKey: string): Promise<string> {
