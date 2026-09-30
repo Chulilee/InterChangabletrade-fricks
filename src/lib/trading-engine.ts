@@ -327,6 +327,9 @@ export class TradingEngine {
    * is a statement about how much was ordered at that price, and `remaining` is
    * per-order execution state that changes as fills land, so summing it makes a
    * level shrink underneath a caller that is looking at committed size.
+   * `remainingQuantity` carries the unfilled tail alongside it, so a caller can
+   * still see how much of the level is still tradeable without having to
+   * reconstruct it from the individual orders.
    *
    * Kept separate from `getOrderBook` because what a level reports is the part
    * that needs to be right: it is the only place in the engine that decides
@@ -347,11 +350,13 @@ export class TradingEngine {
 
       if (existing) {
         existing.quantity += order.quantity;
+        existing.remainingQuantity += order.remaining;
         existing.orderCount++;
       } else {
         levels.set(order.price, {
           price: order.price,
           quantity: order.quantity,
+          remainingQuantity: order.remaining,
           orderCount: 1,
         });
       }
