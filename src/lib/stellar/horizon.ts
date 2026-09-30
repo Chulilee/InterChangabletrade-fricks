@@ -6,17 +6,12 @@ import {
   FeeBumpTransaction,
 } from "@stellar/stellar-sdk";
 import { stellarConfig } from "./config";
+import { toBalances, type Balance } from "./balances";
+
+export type { Balance };
 
 /** Shared Horizon client pointed at the configured network. */
 export const horizon = new Horizon.Server(stellarConfig.horizonUrl);
-
-export interface Balance {
-  /** Asset code, or "XLM" for the native lumen. */
-  code: string;
-  /** Issuer public key, or null for native. */
-  issuer: string | null;
-  balance: string;
-}
 
 /** A trading asset expressed as code/issuer. Native XLM has a null issuer. */
 export interface AssetRef {
@@ -48,16 +43,18 @@ export async function accountExists(publicKey: string): Promise<boolean> {
   }
 }
 
+/**
+ * Every balance this app can represent for an account.
+ *
+ * Horizon also reports entries with no representation here, most commonly
+ * liquidity pool positions, and can add asset types this build has never seen.
+ * Those are logged and skipped rather than being surfaced as a balance with an
+ * undefined asset code, so the returned list only ever holds native and
+ * trustline balances and callers can match on `code` and `issuer` directly.
+ */
 export async function getBalances(publicKey: string): Promise<Balance[]> {
   const account = await horizon.loadAccount(publicKey);
-  return account.balances.map((b) => {
-    if (b.asset_type === "native") {
-      return { code: "XLM", issuer: null, balance: b.balance };
-    }
-    // credit_alphanum4 | credit_alphanum12
-    const line = b as Horizon.HorizonApi.BalanceLineAsset;
-    return { code: line.asset_code, issuer: line.asset_issuer, balance: line.balance };
-  });
+  return toBalances(account.balances);
 }
 
 export async function getNativeBalance(publicKey: string): Promise<string> {

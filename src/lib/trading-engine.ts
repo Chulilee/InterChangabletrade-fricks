@@ -320,32 +320,69 @@ export class TradingEngine {
     };
   }
 
-  getOrderBook(pair: string, depth: number = 20): OrderBook {
-    const book = this.getRawOrderBook(pair);
-    const bidMap: Map<number, OrderBookLevel> = new Map();
-    const askMap: Map<number, OrderBookLevel> = new Map();
+  /**
+   * Collapse resting orders into one level per price.
+   *
+   * `quantity` sums each order's original size, not what is left of it. A level
+   * is a statement about how much was ordered at that price, and `remaining` is
+   * per-order execution state that changes as fills land, so summing it makes a
+   * level shrink underneath a caller that is looking at committed size.
+   * `remainingQuantity` carries the unfilled tail alongside it, so a caller can
+   * still see how much of the level is still tradeable without having to
+   * reconstruct it from the individual orders.
+   *
+   * Kept separate from `getOrderBook` because what a level reports is the part
+   * that needs to be right: it is the only place in the engine that decides
+   * what "the size at this price" means to a caller.
+   */
+  private aggregateLevels(
+    orders: Order[],
+    side: OrderSide,
+  ): OrderBookLevel[] {
+    const levels = new Map<number, OrderBookLevel>();
 
-    for (const order of book) {
-      const map = order.side === 'buy' ? bidMap : askMap;
-      const existing = map.get(order.price);
+    for (const order of orders) {
+      if (order.side !== side) {
+        continue;
+      }
+
+      const existing = levels.get(order.price);
 
       if (existing) {
-        existing.quantity += order.remaining;
+        existing.quantity += order.quantity;
+        existing.remainingQuantity += order.remaining;
         existing.orderCount++;
       } else {
-        map.set(order.price, {
+        levels.set(order.price, {
           price: order.price,
-          quantity: order.remaining,
+          quantity: order.quantity,
+          remainingQuantity: order.remaining,
           orderCount: 1,
         });
       }
     }
 
-    const bids = Array.from(bidMap.values())
+    return Array.from(levels.values());
+  }
+
+  /**
+   * Snapshot the resting book for a pair.
+   *
+   * One level per distinct price per side. Bids come back highest price first,
+   * asks lowest first, each truncated to `depth` levels. `quantity` on a level is
+   * the total originally ordered there and does not move as fills land, so the
+   * snapshot stays reconcilable against the orders behind it;
+   * `remainingQuantity` is the unfilled portion of that level. Fully filled orders
+   * are no longer resting and do not appear.
+   */
+  getOrderBook(pair: string, depth: number = 20): OrderBook {
+    const book = this.getRawOrderBook(pair);
+
+    const bids = this.aggregateLevels(book, 'buy')
       .sort((a, b) => b.price - a.price)
       .slice(0, depth);
 
-    const asks = Array.from(askMap.values())
+    const asks = this.aggregateLevels(book, 'sell')
       .sort((a, b) => a.price - b.price)
       .slice(0, depth);
 

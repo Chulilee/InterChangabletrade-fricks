@@ -51,6 +51,15 @@ import { getTradingEngine } from '@/lib/trading-instance';
  *                             type: number
  *                           quantity:
  *                             type: number
+ *                             description: >
+ *                               Total size originally ordered at this price,
+ *                               summed across every resting order at the
+ *                               level. Stable while fills land against it.
+ *                           remainingQuantity:
+ *                             type: number
+ *                             description: >
+ *                               Portion of quantity that has not been filled
+ *                               yet, i.e. the part still tradeable.
  *                           orderCount:
  *                             type: integer
  *                     asks:
@@ -61,6 +70,8 @@ import { getTradingEngine } from '@/lib/trading-instance';
  *                           price:
  *                             type: number
  *                           quantity:
+ *                             type: number
+ *                           remainingQuantity:
  *                             type: number
  *                           orderCount:
  *                             type: integer

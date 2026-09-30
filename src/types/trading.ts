@@ -23,7 +23,14 @@ export interface Order {
 
 export interface OrderBookLevel {
   price: number;
+  /**
+   * Total size ordered at this price, summed across every resting order at the
+   * level. This is the original order size, not the unfilled tail, so a level
+   * does not shrink as fills land against it.
+   */
   quantity: number;
+  /** Portion of `quantity` that has not been filled yet. */
+  remainingQuantity: number;
   orderCount: number;
 }
 
