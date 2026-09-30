@@ -7,7 +7,7 @@
  * cases, and the part most worth testing.
  */
 
-/** Asset code, or "XLM" for the native lumen. */
+/** A tradable holding: an asset code, its issuer, and how much is held. */
 export interface Balance {
   /** Asset code, or "XLM" for the native lumen. */
   code: string;
