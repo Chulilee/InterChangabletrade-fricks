@@ -183,8 +183,12 @@ export function OrderEntry({
           )}
           
           <div className="relative">
-            <label className="text-xs text-muted-foreground absolute left-3 top-2.5">Size</label>
+            <label
+              htmlFor="order-entry-size"
+              className="text-xs text-muted-foreground absolute left-3 top-2.5"
+            >Size</label>
             <input 
+              id="order-entry-size"
               type="number"
               value={size}
               onChange={e => setSize(e.target.value)}
