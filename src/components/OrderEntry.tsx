@@ -28,6 +28,11 @@ export function OrderEntry({
   const hasPrice = Number.isFinite(effectivePrice) && effectivePrice > 0;
   const hasSize = size !== "" && Number.isFinite(Number(size)) && Number(size) > 0;
 
+  // What the order is worth at the price it will actually use. Showing this
+  // next to the submit button means a market order never has a hidden price
+  // baked into its notional.
+  const orderValue = hasPrice && hasSize ? effectivePrice * Number(size) : null;
+
   // Switching to market discards whatever price was typed into the field. A
   // market order can only ever trade at the market price, so keeping a stale
   // custom value in state was misleading: the field was hidden while still
@@ -201,6 +206,14 @@ export function OrderEntry({
               {pct * 100}%
             </button>
           ))}
+        </div>
+
+        {/* Order value at the price this order will trade at */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Order value</span>
+          <span data-testid="order-value" className="font-mono text-foreground">
+            {orderValue === null ? "--" : orderValue.toFixed(2)}
+          </span>
         </div>
 
         {/* Submit */}
