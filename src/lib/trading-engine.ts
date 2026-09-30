@@ -208,6 +208,16 @@ export class TradingEngine {
         break;
       }
 
+      // A level can be left sitting in the book with nothing left to fill when
+      // it was settled by some other path first (a cancel that overlapped the
+      // sweep, say). Retiring it here keeps dead levels out of the book instead
+      // of writing a zero-quantity fill against them.
+      if (restingOrder.remaining <= 0) {
+        restingOrder.status = 'filled';
+        this.removeFromOrderBook(restingOrder);
+        continue;
+      }
+
       this.applyFill(incomingOrder, restingOrder);
     }
 
