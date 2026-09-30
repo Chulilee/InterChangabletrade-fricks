@@ -365,6 +365,16 @@ export class TradingEngine {
     return Array.from(levels.values());
   }
 
+  /**
+   * Snapshot the resting book for a pair.
+   *
+   * One level per distinct price per side. Bids come back highest price first,
+   * asks lowest first, each truncated to `depth` levels. `quantity` on a level is
+   * the total originally ordered there and does not move as fills land, so the
+   * snapshot stays reconcilable against the orders behind it;
+   * `remainingQuantity` is the unfilled portion of that level. Fully filled orders
+   * are no longer resting and do not appear.
+   */
   getOrderBook(pair: string, depth: number = 20): OrderBook {
     const book = this.getRawOrderBook(pair);
 
