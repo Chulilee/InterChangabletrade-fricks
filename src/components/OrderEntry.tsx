@@ -105,6 +105,16 @@ export function OrderEntry({
           </button>
         </div>
 
+        {orderType === "market" && (
+          <p
+            data-testid="market-order-hint"
+            className="-mt-2 text-xs leading-relaxed text-muted-foreground"
+          >
+            Market orders fill against the current market price rather than a
+            price you set, and that price can move while the order fills.
+          </p>
+        )}
+
         {/* Side Tabs */}
         <div className="flex gap-2">
           <button
