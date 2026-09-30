@@ -8,7 +8,7 @@ import {
 import { stellarConfig } from "./config";
 import { toBalances, type Balance } from "./balances";
 
-export type { Balance } from "./balances";
+export type { Balance };
 
 /** Shared Horizon client pointed at the configured network. */
 export const horizon = new Horizon.Server(stellarConfig.horizonUrl);
