@@ -13,13 +13,16 @@ function renderEntry(onPlaceOrder = jest.fn(), currentPrice = CURRENT_PRICE) {
  * Both the side tab and the submit button carry the side name ("Buy" / "Sell"),
  * and the tabs come first in the DOM, so index 0 is the tab and index 1 is the
  * submit button.
+ *
+ * The role queries hand back `HTMLElement`, so the button-specific members used
+ * below, `disabled` in particular, need the assertion.
  */
 function sideTab(name: "Buy" | "Sell"): HTMLButtonElement {
-  return screen.getAllByRole("button", { name })[0];
+  return screen.getAllByRole("button", { name })[0] as HTMLButtonElement;
 }
 
 function submitButton(): HTMLButtonElement {
-  return screen.getAllByRole("button", { name: "Buy" })[1];
+  return screen.getAllByRole("button", { name: "Buy" })[1] as HTMLButtonElement;
 }
 
 function priceInput(): HTMLInputElement {
