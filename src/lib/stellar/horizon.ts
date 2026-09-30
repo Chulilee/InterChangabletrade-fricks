@@ -43,6 +43,15 @@ export async function accountExists(publicKey: string): Promise<boolean> {
   }
 }
 
+/**
+ * Every balance this app can represent for an account.
+ *
+ * Horizon also reports entries with no representation here, most commonly
+ * liquidity pool positions, and can add asset types this build has never seen.
+ * Those are logged and skipped rather than being surfaced as a balance with an
+ * undefined asset code, so the returned list only ever holds native and
+ * trustline balances and callers can match on `code` and `issuer` directly.
+ */
 export async function getBalances(publicKey: string): Promise<Balance[]> {
   const account = await horizon.loadAccount(publicKey);
   return toBalances(account.balances);
