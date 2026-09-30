@@ -15,16 +15,21 @@ export function OrderEntry({
   const [price, setPrice] = useState<string>(currentPrice.toString());
   const [size, setSize] = useState<string>("");
 
+  // A market order never carries a user-supplied price: it always trades at
+  // whatever the market is printing right now. Deriving the price the order
+  // will actually use means the submit path, the percentage shortcuts and the
+  // UI can never disagree about which price is in play.
+  const effectivePrice = orderType === "market" ? currentPrice : Number(price);
+
   // Sync price when currentPrice changes if we haven't touched it?
   // For simplicity, just use state.
 
   const handlePercentage = (percent: number) => {
     // Mock user balance is 10000 USD or 1 BTC
-    const mockBalance = side === "buy" ? 10000 : 1; 
-    const priceVal = orderType === "limit" ? Number(price) : currentPrice;
-    
+    const mockBalance = side === "buy" ? 10000 : 1;
+
     if (side === "buy") {
-      const maxBuySize = mockBalance / priceVal;
+      const maxBuySize = mockBalance / effectivePrice;
       setSize((maxBuySize * percent).toFixed(4));
     } else {
       setSize((mockBalance * percent).toFixed(4));
@@ -40,7 +45,7 @@ export function OrderEntry({
       id: `ord-${Date.now()}`,
       type: orderType,
       side,
-      price: orderType === "limit" ? Number(price) : currentPrice,
+      price: effectivePrice,
       size: Number(size),
       status: "open"
     });
