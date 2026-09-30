@@ -21,6 +21,13 @@ export function OrderEntry({
   // UI can never disagree about which price is in play.
   const effectivePrice = orderType === "market" ? currentPrice : Number(price);
 
+  // A market order trades at whatever the market is printing, so there is no
+  // price field to fall back on: if the feed has nothing usable there is
+  // nothing to submit. Limit orders are validated the same way, off the price
+  // they would actually trade at.
+  const hasPrice = Number.isFinite(effectivePrice) && effectivePrice > 0;
+  const hasSize = size !== "" && Number.isFinite(Number(size)) && Number(size) > 0;
+
   // Switching to market discards whatever price was typed into the field. A
   // market order can only ever trade at the market price, so keeping a stale
   // custom value in state was misleading: the field was hidden while still
@@ -37,6 +44,8 @@ export function OrderEntry({
   // For simplicity, just use state.
 
   const handlePercentage = (percent: number) => {
+    if (!hasPrice) return;
+
     // Mock user balance is 10000 USD or 1 BTC
     const mockBalance = side === "buy" ? 10000 : 1;
 
@@ -50,8 +59,8 @@ export function OrderEntry({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!size || Number(size) <= 0) return;
-    if (orderType === "limit" && (!price || Number(price) <= 0)) return;
+    if (!hasSize) return;
+    if (!hasPrice) return;
 
     onPlaceOrder({
       id: `ord-${Date.now()}`,
@@ -168,8 +177,9 @@ export function OrderEntry({
         {/* Submit */}
         <button
           type="submit"
+          disabled={!hasSize || !hasPrice}
           className={cn(
-            "mt-auto w-full py-3 rounded-lg font-semibold text-white transition-opacity hover:opacity-90",
+            "mt-auto w-full py-3 rounded-lg font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:hover:opacity-40",
             side === "buy" ? "bg-success" : "bg-danger"
           )}
         >
