@@ -196,11 +196,30 @@ export class TradingEngine {
     return candidates;
   }
 
+  /**
+   * Fill an incoming order against the resting book, then park whatever is
+   * left over.
+   *
+   * Invariants this method relies on, and that any change here must preserve:
+   *
+   * 1. The maker set is resolved by `collectMatches` *before* the first fill.
+   *    `applyFill` splices an exhausted maker out of the live book array, which
+   *    shifts every later element one slot down. Walking that same array by
+   *    index while mutating it made the cursor step over the resting order that
+   *    had just moved into the slot it was about to read, so the sweep silently
+   *    skipped a maker on every removal.
+   * 2. A maker is visited at most once per incoming order, so no maker can be
+   *    filled twice out of a single sweep.
+   * 3. The loop stops as soon as the incoming order is exhausted; a limit order
+   *    never crosses a worse price than its own limit, and a market order never
+   *    walks past the end of the book.
+   * 4. A level left with nothing to fill is retired rather than filled, so the
+   *    book never publishes a zero-quantity level and the trade tape never
+   *    carries a zero-quantity print.
+   * 5. Whatever quantity is left unfilled is only published back to the book
+   *    for limit orders, and it is published exactly once.
+   */
   private matchOrder(incomingOrder: Order): void {
-    // Resolve the maker set before any fill is applied. `applyFill` splices an
-    // exhausted maker out of the live book array, shifting every later element
-    // one slot down, so walking that same array by index while mutating it made
-    // the loop step over resting orders without ever considering them.
     const candidates = this.collectMatches(incomingOrder);
 
     for (const restingOrder of candidates) {
