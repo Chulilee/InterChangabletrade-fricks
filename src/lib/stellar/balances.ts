@@ -49,3 +49,34 @@ export type CreditAssetType = (typeof CREDIT_ASSET_TYPES)[number];
 
 /** The asset code Horizon uses for the native lumen. */
 export const NATIVE_ASSET_CODE = "XLM";
+
+/**
+ * True when the entry describes the native lumen balance.
+ *
+ * Deliberately not a type predicate: the native entry has no asset code or
+ * issuer, so there is no narrower shape worth asserting to the caller.
+ */
+export function isNativeBalanceEntry(entry: HorizonBalanceEntry): boolean {
+  return entry.asset_type === "native";
+}
+
+/**
+ * True when the entry describes a trustline balance.
+ *
+ * Checking `asset_type` explicitly is what makes the cast-free access to
+ * `asset_code` / `asset_issuer` sound: the predicate only fires for the two
+ * trustline asset types, and only those carry the fields.
+ */
+export function isCreditBalanceEntry(
+  entry: HorizonBalanceEntry,
+): entry is HorizonCreditBalanceEntry {
+  return (
+    entry.asset_type === "credit_alphanum4" ||
+    entry.asset_type === "credit_alphanum12"
+  );
+}
+
+/** True for any asset type this module knows how to turn into a `Balance`. */
+export function isSupportedBalanceEntry(entry: HorizonBalanceEntry): boolean {
+  return isNativeBalanceEntry(entry) || isCreditBalanceEntry(entry);
+}
