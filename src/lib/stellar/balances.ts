@@ -80,3 +80,64 @@ export function isCreditBalanceEntry(
 export function isSupportedBalanceEntry(entry: HorizonBalanceEntry): boolean {
   return isNativeBalanceEntry(entry) || isCreditBalanceEntry(entry);
 }
+
+/**
+ * Turn one Horizon balance entry into a `Balance`.
+ *
+ * Returns `null` for anything this app cannot represent: an unrecognised
+ * `asset_type`, or a trustline entry that arrived without its code or issuer.
+ * The caller decides what to do with the gap; the entry is logged rather than
+ * dropped silently so an unexpected type is visible instead of showing up later
+ * as a balance that quietly never existed.
+ */
+export function toBalance(entry: HorizonBalanceEntry): Balance | null {
+  if (isNativeBalanceEntry(entry)) {
+    return {
+      code: NATIVE_ASSET_CODE,
+      issuer: null,
+      balance: entry.balance,
+    };
+  }
+
+  if (isCreditBalanceEntry(entry)) {
+    // Guarded above, so both of these are real fields, not a cast.
+    if (!entry.asset_code || !entry.asset_issuer) {
+      console.warn(
+        `[stellar] Skipping ${entry.asset_type} balance with no asset code or issuer:`,
+        entry,
+      );
+      return null;
+    }
+
+    return {
+      code: entry.asset_code,
+      issuer: entry.asset_issuer,
+      balance: entry.balance,
+    };
+  }
+
+  console.warn(
+    `[stellar] Skipping balance with unsupported asset_type "${entry.asset_type}":`,
+    entry,
+  );
+  return null;
+}
+
+/**
+ * Parse a whole Horizon balance array, dropping every entry that could not be
+ * mapped. An account with one unusable entry still yields its usable balances.
+ */
+export function toBalances(
+  entries: readonly HorizonBalanceEntry[],
+): Balance[] {
+  const balances: Balance[] = [];
+
+  for (const entry of entries) {
+    const balance = toBalance(entry);
+    if (balance) {
+      balances.push(balance);
+    }
+  }
+
+  return balances;
+}
