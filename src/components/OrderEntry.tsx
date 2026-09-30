@@ -135,16 +135,35 @@ export function OrderEntry({
 
         {/* Inputs */}
         <div className="flex flex-col gap-3">
-          {orderType === "limit" && (
+          {orderType === "limit" ? (
             <div className="relative">
-              <label className="text-xs text-muted-foreground absolute left-3 top-2.5">Price</label>
+              <label
+                htmlFor="order-entry-price"
+                className="text-xs text-muted-foreground absolute left-3 top-2.5"
+              >Price</label>
               <input 
+                id="order-entry-price"
                 type="number"
                 value={price}
                 onChange={e => setPrice(e.target.value)}
                 className="w-full bg-background border border-border rounded-lg pl-14 pr-3 py-2 text-sm text-right focus:outline-none focus:border-primary transition-colors"
                 step="0.01"
               />
+            </div>
+          ) : (
+            // A market order takes no price input, but the price it will trade
+            // at still belongs on screen: hiding the field entirely is what
+            // made it look like the order had no price at all.
+            <div className="relative">
+              <span className="text-xs text-muted-foreground absolute left-3 top-2.5">
+                Market price
+              </span>
+              <div
+                data-testid="market-price"
+                className="w-full bg-muted/20 border border-dashed border-border rounded-lg pl-14 pr-3 py-2 text-sm text-right text-muted-foreground"
+              >
+                {hasPrice ? effectivePrice.toFixed(2) : "Unavailable"}
+              </div>
             </div>
           )}
           
