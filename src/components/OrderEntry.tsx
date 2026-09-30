@@ -21,6 +21,18 @@ export function OrderEntry({
   // UI can never disagree about which price is in play.
   const effectivePrice = orderType === "market" ? currentPrice : Number(price);
 
+  // Switching to market discards whatever price was typed into the field. A
+  // market order can only ever trade at the market price, so keeping a stale
+  // custom value in state was misleading: the field was hidden while still
+  // holding it, and the value reappeared as a surprise limit price the moment
+  // the user toggled back to limit.
+  const handleOrderTypeChange = (nextType: "limit" | "market") => {
+    setOrderType(nextType);
+    if (nextType === "market") {
+      setPrice(currentPrice.toString());
+    }
+  };
+
   // Sync price when currentPrice changes if we haven't touched it?
   // For simplicity, just use state.
 
@@ -68,7 +80,7 @@ export function OrderEntry({
               "flex-1 text-xs font-medium py-1.5 rounded-md transition-colors",
               orderType === "limit" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             )}
-            onClick={() => setOrderType("limit")}
+            onClick={() => handleOrderTypeChange("limit")}
           >
             Limit
           </button>
@@ -78,7 +90,7 @@ export function OrderEntry({
               "flex-1 text-xs font-medium py-1.5 rounded-md transition-colors",
               orderType === "market" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             )}
-            onClick={() => setOrderType("market")}
+            onClick={() => handleOrderTypeChange("market")}
           >
             Market
           </button>
