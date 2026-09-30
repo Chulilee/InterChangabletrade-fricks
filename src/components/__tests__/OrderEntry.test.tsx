@@ -72,7 +72,9 @@ describe("OrderEntry order type and price", () => {
   it("replaces the price field with a read-only market price for market orders", () => {
     renderEntry();
 
-    expect(screen.getByTestId("market-price")).not.toBeInTheDocument();
+    // Limit mode has no market price row; only the price input.
+    expect(screen.queryByTestId("market-price")).not.toBeInTheDocument();
+    expect(priceInput().valueAsNumber).toBe(CURRENT_PRICE);
 
     selectMarketOrderType();
 
