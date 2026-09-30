@@ -162,13 +162,21 @@ export class TradingEngine {
     return order;
   }
 
-  private matchOrder(incomingOrder: Order): void {
+  /**
+   * Snapshot the resting orders an incoming order is allowed to trade against.
+   *
+   * The snapshot is taken up front, in book order (which is price-priority
+   * order), and stops at the first opposite-side order that the incoming limit
+   * price does not cross. Working from a stable list means the caller can fill
+   * makers back to back without its cursor being invalidated by the splices
+   * those fills perform on the live book.
+   */
+  private collectMatches(incomingOrder: Order): Order[] {
     const book = this.getRawOrderBook(incomingOrder.pair);
     const isBuy = incomingOrder.side === 'buy';
+    const candidates: Order[] = [];
 
-    for (let i = 0; i < book.length && incomingOrder.remaining > 0; i++) {
-      const restingOrder = book[i];
-
+    for (const restingOrder of book) {
       if (restingOrder.side === incomingOrder.side) {
         continue;
       }
@@ -180,6 +188,24 @@ export class TradingEngine {
         if (!isBuy && incomingOrder.price > restingOrder.price) {
           break;
         }
+      }
+
+      candidates.push(restingOrder);
+    }
+
+    return candidates;
+  }
+
+  private matchOrder(incomingOrder: Order): void {
+    // Resolve the maker set before any fill is applied. `applyFill` splices an
+    // exhausted maker out of the live book array, shifting every later element
+    // one slot down, so walking that same array by index while mutating it made
+    // the loop step over resting orders without ever considering them.
+    const candidates = this.collectMatches(incomingOrder);
+
+    for (const restingOrder of candidates) {
+      if (incomingOrder.remaining <= 0) {
+        break;
       }
 
       this.applyFill(incomingOrder, restingOrder);
