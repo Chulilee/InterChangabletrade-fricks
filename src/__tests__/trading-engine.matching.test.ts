@@ -84,6 +84,9 @@ describe('TradingEngine multi-level matching', () => {
 
     const statuses = makers.map((m) => engine.getOrderStatus(m.id)!);
 
+    // All three makers were reached, so the taker recorded a fill against each.
+    expect(engine.getOrderStatus(taker.id)!.fills).toHaveLength(3);
+
     // The first two makers were consumed outright and must carry a fill each.
     expect(statuses[0].status).toBe('filled');
     expect(statuses[0].remaining).toBe(0);
