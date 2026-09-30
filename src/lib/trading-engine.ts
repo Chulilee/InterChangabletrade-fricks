@@ -320,20 +320,31 @@ export class TradingEngine {
     };
   }
 
-  getOrderBook(pair: string, depth: number = 20): OrderBook {
-    const book = this.getRawOrderBook(pair);
-    const bidMap: Map<number, OrderBookLevel> = new Map();
-    const askMap: Map<number, OrderBookLevel> = new Map();
+  /**
+   * Collapse resting orders into one level per price.
+   *
+   * Kept separate from `getOrderBook` because what a level reports is the part
+   * that needs to be right: it is the only place in the engine that decides
+   * what "the size at this price" means to a caller.
+   */
+  private aggregateLevels(
+    orders: Order[],
+    side: OrderSide,
+  ): OrderBookLevel[] {
+    const levels = new Map<number, OrderBookLevel>();
 
-    for (const order of book) {
-      const map = order.side === 'buy' ? bidMap : askMap;
-      const existing = map.get(order.price);
+    for (const order of orders) {
+      if (order.side !== side) {
+        continue;
+      }
+
+      const existing = levels.get(order.price);
 
       if (existing) {
         existing.quantity += order.remaining;
         existing.orderCount++;
       } else {
-        map.set(order.price, {
+        levels.set(order.price, {
           price: order.price,
           quantity: order.remaining,
           orderCount: 1,
@@ -341,11 +352,17 @@ export class TradingEngine {
       }
     }
 
-    const bids = Array.from(bidMap.values())
+    return Array.from(levels.values());
+  }
+
+  getOrderBook(pair: string, depth: number = 20): OrderBook {
+    const book = this.getRawOrderBook(pair);
+
+    const bids = this.aggregateLevels(book, 'buy')
       .sort((a, b) => b.price - a.price)
       .slice(0, depth);
 
-    const asks = Array.from(askMap.values())
+    const asks = this.aggregateLevels(book, 'sell')
       .sort((a, b) => a.price - b.price)
       .slice(0, depth);
 
