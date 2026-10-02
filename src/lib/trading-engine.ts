@@ -163,6 +163,83 @@ export class TradingEngine {
   }
 
   /**
+   * Submit multiple orders as a batch.
+   * 
+   * Performs a single rate limit check for the batch (using the first order's clientId).
+   * Validates all orders atomically - if any order is invalid, the entire batch is rejected.
+   * Returns an array of results matching the input order (Order | null for each).
+   * 
+   * @param orders - Array of order parameters to submit
+   * @returns Array of submitted orders or null for rejected orders
+   */
+  submitOrders(orders: Array<{
+    pair: string;
+    side: OrderSide;
+    type: OrderType;
+    price: number;
+    quantity: number;
+    clientId: string;
+  }>): Array<Order | null> {
+    if (orders.length === 0) {
+      return [];
+    }
+
+    // Use the first order's clientId for rate limiting the entire batch
+    const batchClientId = orders[0].clientId;
+    
+    // Single rate limit check for the batch
+    if (!this.checkRateLimit(batchClientId)) {
+      return orders.map(() => null);
+    }
+
+    // Validate all orders atomically before submitting any
+    const validatedOrders: Order[] = [];
+    for (const params of orders) {
+      const order: Order = {
+        id: this.generateId(),
+        pair: params.pair,
+        side: params.side,
+        type: params.type,
+        price: params.price,
+        quantity: params.quantity,
+        filled: 0,
+        remaining: params.quantity,
+        status: 'pending',
+        clientId: params.clientId,
+        timestamp: Date.now(),
+      };
+
+      if (!this.validateOrder(order)) {
+        // Atomic validation failed - reject entire batch
+        return orders.map(() => null);
+      }
+      validatedOrders.push(order);
+    }
+
+    // All orders validated - now submit them
+    const results: Array<Order | null> = [];
+    for (const order of validatedOrders) {
+      this.orders.set(order.id, order);
+      this.fills.set(order.id, []);
+
+      this.emit({
+        type: 'order_accepted',
+        orderId: order.id,
+        side: order.side,
+        price: order.price,
+        quantity: order.quantity,
+        remaining: order.remaining,
+        timestamp: order.timestamp,
+      });
+
+      this.matchOrder(order);
+      results.push(order);
+    }
+
+    return results;
+  }
+
+  /**
    * Snapshot the resting orders an incoming order is allowed to trade against.
    *
    * The snapshot is taken up front, in book order (which is price-priority
