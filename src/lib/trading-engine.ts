@@ -2,6 +2,7 @@ import {
   Order,
   OrderSide,
   OrderType,
+  OrderStatus,
   OrderBook,
   OrderBookLevel,
   Fill,
@@ -23,6 +24,9 @@ export class TradingEngine {
   private trades: Map<string, Fill[]> = new Map(); // Historical trades per pair
   private eventHandlers: EventHandler[] = [];
   private rateLimits: Map<string, RateLimitEntry> = new Map();
+  
+  // Client order index for O(1) lookup of orders by clientId
+  private clientOrderIndex: Map<string, Set<string>> = new Map();
 
   private readonly RATE_LIMIT_WINDOW = 60000; // 1 minute
   private readonly MAX_ORDERS_PER_MINUTE = 100;
@@ -146,6 +150,12 @@ export class TradingEngine {
 
     this.orders.set(order.id, order);
     this.fills.set(order.id, []);
+    
+    // Update client order index
+    if (!this.clientOrderIndex.has(params.clientId)) {
+      this.clientOrderIndex.set(params.clientId, new Set());
+    }
+    this.clientOrderIndex.get(params.clientId)!.add(order.id);
 
     this.emit({
       type: 'order_accepted',
@@ -221,6 +231,12 @@ export class TradingEngine {
     for (const order of validatedOrders) {
       this.orders.set(order.id, order);
       this.fills.set(order.id, []);
+      
+      // Update client order index
+      if (!this.clientOrderIndex.has(order.clientId)) {
+        this.clientOrderIndex.set(order.clientId, new Set());
+      }
+      this.clientOrderIndex.get(order.clientId)!.add(order.id);
 
       this.emit({
         type: 'order_accepted',
@@ -439,6 +455,15 @@ export class TradingEngine {
     order.status = 'cancelled';
     order.remaining = 0;
 
+    // Remove from client order index
+    const clientOrders = this.clientOrderIndex.get(order.clientId);
+    if (clientOrders) {
+      clientOrders.delete(orderId);
+      if (clientOrders.size === 0) {
+        this.clientOrderIndex.delete(order.clientId);
+      }
+    }
+
     this.emit({
       type: 'order_cancelled',
       orderId: order.id,
@@ -464,6 +489,79 @@ export class TradingEngine {
       filled: order.filled,
       remaining: order.remaining,
       fills: this.fills.get(orderId) || [],
+    };
+  }
+
+  /**
+   * Get all orders for a specific client with optional filtering and pagination.
+   * 
+   * Uses the client order index for O(1) lookup of client's order IDs.
+   * 
+   * @param clientId - The client ID to query orders for
+   * @param options - Optional filtering and pagination options
+   * @returns Paginated list of order status responses
+   */
+  getOrdersByClient(
+    clientId: string,
+    options: {
+      status?: OrderStatus;
+      page?: number;
+      limit?: number;
+    } = {}
+  ): {
+    orders: OrderStatusResponse[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  } {
+    const { status, page = 1, limit = 50 } = options;
+    
+    const clientOrderIds = this.clientOrderIndex.get(clientId);
+    if (!clientOrderIds) {
+      return {
+        orders: [],
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
+      };
+    }
+
+    // Get all orders for this client
+    let clientOrders: OrderStatusResponse[] = [];
+    for (const orderId of clientOrderIds) {
+      const orderStatus = this.getOrderStatus(orderId);
+      if (orderStatus) {
+        // Filter by status if provided
+        if (!status || orderStatus.status === status) {
+          clientOrders.push(orderStatus);
+        }
+      }
+    }
+
+    // Sort by timestamp descending (newest first) - we need to get the original order for timestamp
+    const ordersWithTimestamp = clientOrders.map(os => {
+      const order = this.orders.get(os.orderId);
+      return { ...os, timestamp: order?.timestamp || 0 };
+    });
+    
+    ordersWithTimestamp.sort((a, b) => b.timestamp - a.timestamp);
+    
+    const sortedOrders = ordersWithTimestamp.map(({ timestamp, ...os }) => os);
+
+    const total = sortedOrders.length;
+    const totalPages = Math.ceil(total / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedOrders = sortedOrders.slice(startIndex, endIndex);
+
+    return {
+      orders: paginatedOrders,
+      total,
+      page,
+      limit,
+      totalPages,
     };
   }
 
