@@ -2,6 +2,7 @@ import {
   Order,
   OrderSide,
   OrderType,
+  OrderStatus,
   OrderBook,
   OrderBookLevel,
   Fill,
@@ -16,16 +17,48 @@ interface RateLimitEntry {
   resetTime: number;
 }
 
+export interface RateLimitTier {
+  windowMs: number;
+  maxRequests: number;
+}
+
+export interface RateLimitConfig {
+  global: RateLimitTier;
+  perClient: RateLimitTier;
+  perIp: RateLimitTier;
+  premium: {
+    enabled: boolean;
+    multiplier: number; // Multiplier for premium client limits
+    clientIds: Set<string>; // Set of premium client IDs
+  };
+}
+
+const DEFAULT_RATE_LIMIT_CONFIG: RateLimitConfig = {
+  global: { windowMs: 60000, maxRequests: 1000 },
+  perClient: { windowMs: 60000, maxRequests: 100 },
+  perIp: { windowMs: 60000, maxRequests: 200 },
+  premium: {
+    enabled: true,
+    multiplier: 10,
+    clientIds: new Set(),
+  },
+};
+
 export class TradingEngine {
   private orderBooks: Map<string, Order[]> = new Map();
   private orders: Map<string, Order> = new Map();
   private fills: Map<string, Fill[]> = new Map();
   private trades: Map<string, Fill[]> = new Map(); // Historical trades per pair
   private eventHandlers: EventHandler[] = [];
-  private rateLimits: Map<string, RateLimitEntry> = new Map();
-
-  private readonly RATE_LIMIT_WINDOW = 60000; // 1 minute
-  private readonly MAX_ORDERS_PER_MINUTE = 100;
+  
+  // Multi-tier rate limiting
+  private globalRateLimit: RateLimitEntry = { count: 0, resetTime: 0 };
+  private clientRateLimits: Map<string, RateLimitEntry> = new Map();
+  private ipRateLimits: Map<string, RateLimitEntry> = new Map();
+  private rateLimitConfig: RateLimitConfig = { ...DEFAULT_RATE_LIMIT_CONFIG };
+  
+  // Client order index for O(1) lookup of orders by clientId
+  private clientOrderIndex: Map<string, Set<string>> = new Map();
 
   onEvent(handler: EventHandler): void {
     this.eventHandlers.push(handler);
@@ -39,23 +72,74 @@ export class TradingEngine {
     this.eventHandlers.forEach((handler) => handler(event));
   }
 
-  private checkRateLimit(clientId: string): boolean {
+  /**
+   * Check rate limit for a specific tier
+   */
+  private checkTierRateLimit(
+    tierLimits: Map<string, RateLimitEntry>,
+    key: string,
+    tier: RateLimitTier,
+    isPremium: boolean = false
+  ): boolean {
     const now = Date.now();
-    const entry = this.rateLimits.get(clientId);
+    const effectiveMaxRequests = isPremium 
+      ? Math.floor(tier.maxRequests * this.rateLimitConfig.premium.multiplier)
+      : tier.maxRequests;
+    const entry = tierLimits.get(key);
 
     if (!entry || now > entry.resetTime) {
-      this.rateLimits.set(clientId, {
+      tierLimits.set(key, {
         count: 1,
-        resetTime: now + this.RATE_LIMIT_WINDOW,
+        resetTime: now + tier.windowMs,
       });
       return true;
     }
 
-    if (entry.count >= this.MAX_ORDERS_PER_MINUTE) {
+    if (entry.count >= effectiveMaxRequests) {
       return false;
     }
 
     entry.count++;
+    return true;
+  }
+
+  /**
+   * Check if a client is a premium client
+   */
+  private isPremiumClient(clientId: string): boolean {
+    return this.rateLimitConfig.premium.enabled && 
+           this.rateLimitConfig.premium.clientIds.has(clientId);
+  }
+
+  /**
+   * Multi-tier rate limit check.
+   * Checks global, per-client, and per-IP limits.
+   * Returns true if all tiers allow the request.
+   */
+  private checkRateLimit(clientId: string, clientIp?: string): boolean {
+    const isPremium = this.isPremiumClient(clientId);
+
+    // Check global rate limit
+    const now = Date.now();
+    const globalEntry = this.globalRateLimit;
+    if (now > globalEntry.resetTime) {
+      this.globalRateLimit = { count: 1, resetTime: now + this.rateLimitConfig.global.windowMs };
+    } else if (globalEntry.count >= this.rateLimitConfig.global.maxRequests) {
+      return false;
+    } else {
+      this.globalRateLimit.count++;
+    }
+
+    // Check per-client rate limit
+    if (!this.checkTierRateLimit(this.clientRateLimits, clientId, this.rateLimitConfig.perClient, isPremium)) {
+      return false;
+    }
+
+    // Check per-IP rate limit if IP provided
+    if (clientIp && !this.checkTierRateLimit(this.ipRateLimits, clientIp, this.rateLimitConfig.perIp, isPremium)) {
+      return false;
+    }
+
     return true;
   }
 
@@ -121,8 +205,9 @@ export class TradingEngine {
     price: number;
     quantity: number;
     clientId: string;
+    clientIp?: string; // Optional IP for per-IP rate limiting
   }): Order | null {
-    if (!this.checkRateLimit(params.clientId)) {
+    if (!this.checkRateLimit(params.clientId, params.clientIp)) {
       return null;
     }
 
@@ -146,6 +231,12 @@ export class TradingEngine {
 
     this.orders.set(order.id, order);
     this.fills.set(order.id, []);
+    
+    // Update client order index
+    if (!this.clientOrderIndex.has(params.clientId)) {
+      this.clientOrderIndex.set(params.clientId, new Set());
+    }
+    this.clientOrderIndex.get(params.clientId)!.add(order.id);
 
     this.emit({
       type: 'order_accepted',
@@ -160,6 +251,91 @@ export class TradingEngine {
     this.matchOrder(order);
 
     return order;
+  }
+
+  /**
+   * Submit multiple orders as a batch.
+   * 
+   * Performs a single rate limit check for the batch (using the first order's clientId).
+   * Validates all orders atomically - if any order is invalid, the entire batch is rejected.
+   * Returns an array of results matching the input order (Order | null for each).
+   * 
+   * @param orders - Array of order parameters to submit
+   * @returns Array of submitted orders or null for rejected orders
+   */
+  submitOrders(orders: Array<{
+    pair: string;
+    side: OrderSide;
+    type: OrderType;
+    price: number;
+    quantity: number;
+    clientId: string;
+    clientIp?: string;
+  }>): Array<Order | null> {
+    if (orders.length === 0) {
+      return [];
+    }
+
+    // Use the first order's clientId for rate limiting the entire batch
+    const batchClientId = orders[0].clientId;
+    const batchClientIp = orders[0].clientIp;
+    
+    // Single rate limit check for the batch
+    if (!this.checkRateLimit(batchClientId, batchClientIp)) {
+      return orders.map(() => null);
+    }
+
+    // Validate all orders atomically before submitting any
+    const validatedOrders: Order[] = [];
+    for (const params of orders) {
+      const order: Order = {
+        id: this.generateId(),
+        pair: params.pair,
+        side: params.side,
+        type: params.type,
+        price: params.price,
+        quantity: params.quantity,
+        filled: 0,
+        remaining: params.quantity,
+        status: 'pending',
+        clientId: params.clientId,
+        timestamp: Date.now(),
+      };
+
+      if (!this.validateOrder(order)) {
+        // Atomic validation failed - reject entire batch
+        return orders.map(() => null);
+      }
+      validatedOrders.push(order);
+    }
+
+    // All orders validated - now submit them
+    const results: Array<Order | null> = [];
+    for (const order of validatedOrders) {
+      this.orders.set(order.id, order);
+      this.fills.set(order.id, []);
+      
+      // Update client order index
+      if (!this.clientOrderIndex.has(order.clientId)) {
+        this.clientOrderIndex.set(order.clientId, new Set());
+      }
+      this.clientOrderIndex.get(order.clientId)!.add(order.id);
+
+      this.emit({
+        type: 'order_accepted',
+        orderId: order.id,
+        side: order.side,
+        price: order.price,
+        quantity: order.quantity,
+        remaining: order.remaining,
+        timestamp: order.timestamp,
+      });
+
+      this.matchOrder(order);
+      results.push(order);
+    }
+
+    return results;
   }
 
   /**
@@ -362,6 +538,15 @@ export class TradingEngine {
     order.status = 'cancelled';
     order.remaining = 0;
 
+    // Remove from client order index
+    const clientOrders = this.clientOrderIndex.get(order.clientId);
+    if (clientOrders) {
+      clientOrders.delete(orderId);
+      if (clientOrders.size === 0) {
+        this.clientOrderIndex.delete(order.clientId);
+      }
+    }
+
     this.emit({
       type: 'order_cancelled',
       orderId: order.id,
@@ -387,6 +572,192 @@ export class TradingEngine {
       filled: order.filled,
       remaining: order.remaining,
       fills: this.fills.get(orderId) || [],
+    };
+  }
+
+  /**
+   * Get all orders for a specific client with optional filtering and pagination.
+   * 
+   * Uses the client order index for O(1) lookup of client's order IDs.
+   * 
+   * @param clientId - The client ID to query orders for
+   * @param options - Optional filtering and pagination options
+   * @returns Paginated list of order status responses
+   */
+  getOrdersByClient(
+    clientId: string,
+    options: {
+      status?: OrderStatus;
+      page?: number;
+      limit?: number;
+    } = {}
+  ): {
+    orders: OrderStatusResponse[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  } {
+    const { status, page = 1, limit = 50 } = options;
+    
+    const clientOrderIds = this.clientOrderIndex.get(clientId);
+    if (!clientOrderIds) {
+      return {
+        orders: [],
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
+      };
+    }
+
+    // Get all orders for this client
+    let clientOrders: OrderStatusResponse[] = [];
+    for (const orderId of clientOrderIds) {
+      const orderStatus = this.getOrderStatus(orderId);
+      if (orderStatus) {
+        // Filter by status if provided
+        if (!status || orderStatus.status === status) {
+          clientOrders.push(orderStatus);
+        }
+      }
+    }
+
+    // Sort by timestamp descending (newest first) - we need to get the original order for timestamp
+    const ordersWithTimestamp = clientOrders.map(os => {
+      const order = this.orders.get(os.orderId);
+      return { ...os, timestamp: order?.timestamp || 0 };
+    });
+    
+    ordersWithTimestamp.sort((a, b) => b.timestamp - a.timestamp);
+    
+    const sortedOrders = ordersWithTimestamp.map(({ timestamp, ...os }) => os);
+
+    const total = sortedOrders.length;
+    const totalPages = Math.ceil(total / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedOrders = sortedOrders.slice(startIndex, endIndex);
+
+    return {
+      orders: paginatedOrders,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
+  /**
+   * Rate Limit Configuration Methods
+   */
+
+  /**
+   * Update rate limit configuration
+   */
+  setRateLimitConfig(config: Partial<RateLimitConfig>): void {
+    this.rateLimitConfig = {
+      ...this.rateLimitConfig,
+      ...config,
+      global: { ...this.rateLimitConfig.global, ...config.global },
+      perClient: { ...this.rateLimitConfig.perClient, ...config.perClient },
+      perIp: { ...this.rateLimitConfig.perIp, ...config.perIp },
+      premium: { 
+        ...this.rateLimitConfig.premium, 
+        ...config.premium,
+        clientIds: config.premium?.clientIds ?? this.rateLimitConfig.premium.clientIds,
+      },
+    };
+  }
+
+  /**
+   * Get current rate limit configuration
+   */
+  getRateLimitConfig(): RateLimitConfig {
+    return {
+      global: { ...this.rateLimitConfig.global },
+      perClient: { ...this.rateLimitConfig.perClient },
+      perIp: { ...this.rateLimitConfig.perIp },
+      premium: {
+        ...this.rateLimitConfig.premium,
+        clientIds: new Set(this.rateLimitConfig.premium.clientIds),
+      },
+    };
+  }
+
+  /**
+   * Add a premium client (gets higher rate limits)
+   */
+  addPremiumClient(clientId: string): void {
+    this.rateLimitConfig.premium.clientIds.add(clientId);
+  }
+
+  /**
+   * Remove a premium client
+   */
+  removePremiumClient(clientId: string): void {
+    this.rateLimitConfig.premium.clientIds.delete(clientId);
+  }
+
+  /**
+   * Check if a client is premium
+   */
+  isPremiumClientPublic(clientId: string): boolean {
+    return this.isPremiumClient(clientId);
+  }
+
+  /**
+   * Get current rate limit status for a client
+   */
+  getRateLimitStatus(clientId: string, clientIp?: string): {
+    global: { used: number; remaining: number; resetTime: number };
+    client: { used: number; remaining: number; resetTime: number };
+    ip?: { used: number; remaining: number; resetTime: number };
+    isPremium: boolean;
+  } {
+    const now = Date.now();
+    const isPremium = this.isPremiumClient(clientId);
+    
+    const globalEntry = this.globalRateLimit;
+    const globalRemaining = Math.max(0, this.rateLimitConfig.global.maxRequests - 
+      (now > globalEntry.resetTime ? 0 : globalEntry.count));
+    
+    const clientEntry = this.clientRateLimits.get(clientId);
+    const clientMax = isPremium 
+      ? Math.floor(this.rateLimitConfig.perClient.maxRequests * this.rateLimitConfig.premium.multiplier)
+      : this.rateLimitConfig.perClient.maxRequests;
+    const clientRemaining = clientEntry && now <= clientEntry.resetTime
+      ? Math.max(0, clientMax - clientEntry.count)
+      : clientMax;
+
+    let ipStatus;
+    if (clientIp) {
+      const ipEntry = this.ipRateLimits.get(clientIp);
+      const ipMax = isPremium
+        ? Math.floor(this.rateLimitConfig.perIp.maxRequests * this.rateLimitConfig.premium.multiplier)
+        : this.rateLimitConfig.perIp.maxRequests;
+      ipStatus = {
+        used: ipEntry && now <= ipEntry.resetTime ? ipEntry.count : 0,
+        remaining: ipEntry && now <= ipEntry.resetTime 
+          ? Math.max(0, ipMax - ipEntry.count)
+          : ipMax,
+        resetTime: ipEntry?.resetTime || now + this.rateLimitConfig.perIp.windowMs,
+      };
+    }
+
+    return {
+      global: {
+        used: now > globalEntry.resetTime ? 0 : globalEntry.count,
+        remaining: globalRemaining,
+        resetTime: globalEntry.resetTime,
+      },
+      client: {
+        used: clientEntry && now <= clientEntry.resetTime ? clientEntry.count : 0,
+        remaining: clientRemaining,
+        resetTime: clientEntry?.resetTime || now + this.rateLimitConfig.perClient.windowMs,
+      },
+      ip: ipStatus,
+      isPremium,
     };
   }
 
