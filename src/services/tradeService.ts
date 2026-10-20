@@ -85,9 +85,10 @@ export async function estimateOrderFees(input: PlaceOrderInput): Promise<FeeEsti
   const offerOps = 1;
   const totalOps = trustlineOps + offerOps;
   
-  const trustlineFeeStroops = trustlineOps * BASE_FEE;
-  const offerFeeStroops = offerOps * BASE_FEE;
-  const totalFeeStroops = totalOps * BASE_FEE;
+  const baseFee = Number(BASE_FEE);
+  const trustlineFeeStroops = trustlineOps * baseFee;
+  const offerFeeStroops = offerOps * baseFee;
+  const totalFeeStroops = totalOps * baseFee;
   
   return {
     trustlineFeeStroops,

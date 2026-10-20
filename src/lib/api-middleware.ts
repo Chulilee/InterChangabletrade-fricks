@@ -108,12 +108,12 @@ export function createErrorResponse(status: number, message: string, details?: u
 }
 
 // Success response formatter
-export function createSuccessResponse(data: unknown, metadata?: Record<string, unknown>) {
+export function createSuccessResponse(data: unknown, metadata?: Record<string, unknown>, status?: number) {
   return NextResponse.json({
     data,
     metadata: {
       timestamp: new Date().toISOString(),
       ...metadata,
     },
-  });
+  }, { status });
 }
