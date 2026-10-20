@@ -116,7 +116,7 @@ export async function estimateOrderTotalCost(input: PlaceOrderInput): Promise<{
   /** Counter amount (for buy orders) */
   counterAmount: number;
 }> {
-  const { asset, side, amount, price } = input;
+  const { side, amount, price } = input;
   
   const fees = await estimateOrderFees(input);
   

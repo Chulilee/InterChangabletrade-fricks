@@ -612,7 +612,7 @@ export class TradingEngine {
     }
 
     // Get all orders for this client
-    let clientOrders: OrderStatusResponse[] = [];
+    const clientOrders: OrderStatusResponse[] = [];
     for (const orderId of clientOrderIds) {
       const orderStatus = this.getOrderStatus(orderId);
       if (orderStatus) {
@@ -623,15 +623,12 @@ export class TradingEngine {
       }
     }
 
-    // Sort by timestamp descending (newest first) - we need to get the original order for timestamp
-    const ordersWithTimestamp = clientOrders.map(os => {
-      const order = this.orders.get(os.orderId);
-      return { ...os, timestamp: order?.timestamp || 0 };
+    // Sort by timestamp descending (newest first)
+    const sortedOrders = [...clientOrders].sort((a, b) => {
+      const aTime = this.orders.get(a.orderId)?.timestamp || 0;
+      const bTime = this.orders.get(b.orderId)?.timestamp || 0;
+      return bTime - aTime;
     });
-    
-    ordersWithTimestamp.sort((a, b) => b.timestamp - a.timestamp);
-    
-    const sortedOrders = ordersWithTimestamp.map(({ timestamp, ...os }) => os);
 
     const total = sortedOrders.length;
     const totalPages = Math.ceil(total / limit);
