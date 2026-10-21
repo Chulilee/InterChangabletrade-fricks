@@ -85,6 +85,19 @@ export async function signTransaction(
     address,
     networkPassphrase: stellarConfig.networkPassphrase,
   });
+
+  // Validate that the signed XDR can be parsed back successfully
+  // This catches cases where the wallet returns malformed XDR
+  try {
+    TransactionBuilder.fromXDR(signedTxXdr, stellarConfig.networkPassphrase);
+  } catch (parseError) {
+    throw new Error(
+      `Wallet returned invalid signed XDR that cannot be parsed: ` +
+        `${parseError instanceof Error ? parseError.message : String(parseError)}. ` +
+        `Original XDR length: ${signedTxXdr.length}.`
+    );
+  }
+
   return signedTxXdr;
 }
 
