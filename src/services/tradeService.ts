@@ -2,7 +2,7 @@
 
 import { BASE_FEE } from "@stellar/stellar-sdk";
 import type { Asset, TradeSide } from "@/types/asset";
-import { buildDexOfferTx, buildTrustlineTx } from "@/lib/stellar/dex";
+import { buildDexOfferTx, buildTrustlineTx, buildRemoveTrustlineTx } from "@/lib/stellar/dex";
 import { signAndSubmit } from "@/lib/stellar/wallet";
 import { accountExists, getBalances, type AssetRef } from "@/lib/stellar/horizon";
 import { txExplorerUrl } from "@/lib/stellar/config";
@@ -229,21 +229,43 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const balances = await getBalances(address);
 
   let trustlineHash: string | undefined;
+  let trustlineCreated = false;
   const needsTrustline = side === "buy" && !hasTrustline(balances, base);
   if (needsTrustline) {
     const trustTx = await buildTrustlineTx(address, base);
     trustlineHash = await signAndSubmit(trustTx, address);
+    trustlineCreated = true;
   }
 
-  const offerTx = await buildDexOfferTx({
-    publicKey: address,
-    base,
-    counter: XLM,
-    side,
-    amount: String(amount),
-    price: String(price),
-  });
-  const hash = await signAndSubmit(offerTx, address);
+  let hash: string;
+  try {
+    const offerTx = await buildDexOfferTx({
+      publicKey: address,
+      base,
+      counter: XLM,
+      side,
+      amount: String(amount),
+      price: String(price),
+    });
+    hash = await signAndSubmit(offerTx, address);
+  } catch (offerError) {
+    // If trustline was created but offer failed, attempt to clean up the trustline
+    if (trustlineCreated && needsTrustline) {
+      try {
+        const removeTrustlineTx = await buildRemoveTrustlineTx(address, base);
+        await signAndSubmit(removeTrustlineTx, address);
+        // Trustline cleaned up successfully
+        trustlineHash = undefined;
+      } catch (cleanupError) {
+        // Log but don't throw - we already have an error to throw
+        console.warn(
+          `Trustline created but offer failed. Trustline cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}. ` +
+            `User may need to manually remove trustline for ${base.code}${base.issuer ? ":" + base.issuer : ""}.`
+        );
+      }
+    }
+    throw offerError;
+  }
 
   // Return fee info with the result
   const fees = await estimateOrderFees(input);

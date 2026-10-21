@@ -39,6 +39,27 @@ export async function buildTrustlineTx(
     .build();
 }
 
+/**
+ * Build an unsigned `changeTrust` transaction to remove a trustline by setting
+ * the limit to "0". This allows the account to close the trustline and recover
+ * the minimum balance reserve (0.5 XLM).
+ */
+export async function buildRemoveTrustlineTx(
+  publicKey: string,
+  asset: AssetRef,
+): Promise<Transaction> {
+  const source = await horizon.loadAccount(publicKey);
+  return builder(source)
+    .addOperation(
+      Operation.changeTrust({
+        asset: toSdkAsset(asset) as Asset,
+        limit: "0",
+      }),
+    )
+    .setTimeout(TIMEOUT_SECONDS)
+    .build();
+}
+
 export type OrderSide = "buy" | "sell";
 
 export interface DexOrderParams {
