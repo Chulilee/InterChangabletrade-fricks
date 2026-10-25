@@ -72,13 +72,7 @@ export function ListingList({ onEdit, onFindMatches, refreshKey }: ListingListPr
   }, [searchParams]);
 
   const categories = useMemo(() => getCategories(), []);
-  const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    // Derive candidate tags from the currently listed items so the tag chips
-    // reflect what is actually filterable. The listing service is not sync, so
-    // we seed from a static superset plus any tags seen in results below.
-    return Array.from(tagSet);
-  }, []);
+  
 
   const [data, setData] = useState<PaginatedListings | null>(null);
   const [loading, setLoading] = useState(true);
