@@ -96,7 +96,7 @@ export function ListingList({ onEdit, onFindMatches, refreshKey }: ListingListPr
   }, [data]);
 
   const searchSuggestions = useMemo(() => {
-    const q = filters.search.toLowerCase();
+    const q = (filters.search ?? "").toLowerCase();
     if (!q) return [];
     const seen = new Set<string>();
     const suggestions: string[] = [];
@@ -122,7 +122,7 @@ export function ListingList({ onEdit, onFindMatches, refreshKey }: ListingListPr
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-3">
         <SearchBar
-          value={filters.search}
+          value={filters.search ?? ""}
           suggestions={searchSuggestions}
           onChange={(search) =>
             setFilters((f) => ({ ...f, search, page: 1 }))

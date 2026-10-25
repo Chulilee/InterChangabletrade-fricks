@@ -49,9 +49,10 @@ export function FilterPanel({
   const toggleTag = useCallback(
     (tag: string) => {
       onChange((prev) => {
-        const tags = prev.tags.includes(tag)
-          ? prev.tags.filter((t) => t !== tag)
-          : [...prev.tags, tag];
+        const currentTags = prev.tags ?? [];
+        const tags = currentTags.includes(tag)
+          ? currentTags.filter((t) => t !== tag)
+          : [...currentTags, tag];
         return { ...prev, tags, page: 1 };
       });
     },
