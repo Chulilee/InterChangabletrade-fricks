@@ -14,17 +14,6 @@ interface ListingListProps {
   refreshKey?: number;
 }
 
-const DEFAULT_FILTERS: ListingFilters = {
-  search: "",
-  category: "",
-  tags: [],
-  priceMin: undefined,
-  priceMax: undefined,
-  sortBy: "date",
-  page: 1,
-  perPage: 6,
-};
-
 function parseFiltersFromSearchParams(searchParams: URLSearchParams): ListingFilters {
   const tagsParam = searchParams.get("tags");
   const tags = tagsParam ? tagsParam.split(",").filter(Boolean) : [];
@@ -70,9 +59,6 @@ export function ListingList({ onEdit, onFindMatches, refreshKey }: ListingListPr
   useEffect(() => {
     setFilters(parseFiltersFromSearchParams(searchParams));
   }, [searchParams]);
-
-  const categories = useMemo(() => getCategories(), []);
-  
 
   const [data, setData] = useState<PaginatedListings | null>(null);
   const [loading, setLoading] = useState(true);

@@ -5,9 +5,7 @@ import { useRouter } from "next/navigation";
 import { NotificationPreferencesPanel } from "@/components/NotificationPreferences";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  updateProfile as apiUpdateProfile,
-} from "@/services/profileService";
+
 import type { ProfileUpdate, UserPreferences } from "@/types/profile";
 
 interface SettingsSectionProps {
@@ -16,16 +14,7 @@ interface SettingsSectionProps {
   saving: boolean;
 }
 
-function themeLabel(theme: string): string {
-  switch (theme) {
-    case "dark":
-      return "Dark";
-    case "light":
-      return "Light";
-    default:
-      return "System";
-  }
-}
+
 
 function AccountSection({
   preferences,
