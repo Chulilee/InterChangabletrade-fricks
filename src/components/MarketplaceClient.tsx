@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, Suspense } from "react";
 import type { Listing } from "@/types/listing";
 import { useAuth } from "@/hooks/useAuth";
 import { ListingList } from "@/components/ListingList";
@@ -107,11 +107,13 @@ export function MarketplaceClient() {
       )}
 
       {view === "list" && (
-        <ListingList
-          onEdit={isAuthenticated ? handleEdit : undefined}
-          onFindMatches={isAuthenticated ? handleFindMatches : undefined}
-          refreshKey={refreshKey}
-        />
+        <Suspense fallback={<div className="flex justify-center py-16" />}>
+          <ListingList
+            onEdit={isAuthenticated ? handleEdit : undefined}
+            onFindMatches={isAuthenticated ? handleFindMatches : undefined}
+            refreshKey={refreshKey}
+          />
+        </Suspense>
       )}
     </div>
   );
