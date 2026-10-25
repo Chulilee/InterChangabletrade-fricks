@@ -1,4 +1,4 @@
-# InterChangableTrade-Fricks
+# InterChangabletrade-fricks
 
 > Web frontend for trading tokenized assets on the **Stellar** network. Wallet
 > connection, balances, funding, and order placement run against **Stellar
@@ -55,8 +55,8 @@ the same Horizon and DEX code paths.
 ## Getting started
 
 ```bash
-git clone https://github.com/InterChangableTrade/InterChangableTrade-Fricks.git
-cd InterChangableTrade-Fricks
+git clone https://github.com/Chulilee/InterChangabletrade-fricks.git
+cd InterChangabletrade-fricks
 npm install
 cp .env.example .env.local   # defaults to Stellar Testnet
 npm run dev
@@ -121,11 +121,11 @@ npm run test:e2e     # Playwright end-to-end
 ```
 
 ## Related repositories
-- **[InterChangableTrade-Protocol](https://github.com/Chulilee/InterChangableTrade-Protocol)** 
+
+- **[InterChangableTrade-Protocol](https://github.com/Chulilee/InterChangableTrade-Protocol)** —
   Soroban smart contracts (access-control, escrow, marketplace, etc.)
-- InterChangableTrade-Core — market data & account API (in progress)
-- **[InterChangableTrade-Corel](https://github.com/Chulilee/InterChangableTrade-Core)** 
-- InterChangableTrade-Protocol — asset/issuance specifications (in progress)
+- **[InterChangableTrade-Core](https://github.com/Chulilee/InterChangableTrade-Core)** —
+  market data & account API (in progress)
 
 ## Contributing
 
