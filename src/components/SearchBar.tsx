@@ -1,8 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Listing } from "@/types/listing";
-import { getListings } from "@/services/listingService";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface SearchBarProps {
   value: string;

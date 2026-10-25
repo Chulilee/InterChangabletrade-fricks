@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, startTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Listing, ListingFilters, PaginatedListings } from "@/types/listing";
-import { getListings, getCategories } from "@/services/listingService";
+import { getListings } from "@/services/listingService";
 import { ListingCard } from "@/components/ListingCard";
 import { SearchBar } from "@/components/SearchBar";
 import { FilterPanel } from "@/components/FilterPanel";

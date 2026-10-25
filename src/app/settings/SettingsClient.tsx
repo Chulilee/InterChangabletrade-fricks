@@ -205,7 +205,7 @@ function PrivacySection({
 export function SettingsClient() {
   const router = useRouter();
   const { user } = useAuth();
-  const { profile, settings, updateProfile, isLoading, error } = useProfile();
+  const { profile, settings, isLoading, error } = useProfile();
   const preferences = settings.preferences;
 
   const [savingSections, setSavingSections] = useState<Set<string>>(new Set());
