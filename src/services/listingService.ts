@@ -145,6 +145,21 @@ export async function getListings(
     items = items.filter((l) => l.category === filters.category);
   }
 
+  if (filters.tags?.length) {
+    const tagSet = new Set(filters.tags.map((t) => t.toLowerCase()));
+    items = items.filter((l) =>
+      l.tags.some((t) => tagSet.has(t.toLowerCase())),
+    );
+  }
+
+  if (filters.priceMin !== undefined) {
+    items = items.filter((l) => l.price >= filters.priceMin!);
+  }
+
+  if (filters.priceMax !== undefined) {
+    items = items.filter((l) => l.price <= filters.priceMax!);
+  }
+
   if (filters.sortBy === "price-asc") {
     items.sort((a, b) => a.price - b.price);
   } else if (filters.sortBy === "price-desc") {
