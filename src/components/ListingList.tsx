@@ -103,8 +103,7 @@ export function ListingList({ onEdit, onFindMatches, refreshKey }: ListingListPr
         { scroll: false },
       );
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, router, refreshKey]);
+  }, [filters, fetchListings, router, refreshKey]);
 
   const totalPages = data?.totalPages ?? 1;
 

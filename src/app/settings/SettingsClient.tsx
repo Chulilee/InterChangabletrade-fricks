@@ -7,7 +7,6 @@ import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import {
   updateProfile as apiUpdateProfile,
-  getUserPreferences,
 } from "@/services/profileService";
 import type { ProfileUpdate, UserPreferences } from "@/types/profile";
 
