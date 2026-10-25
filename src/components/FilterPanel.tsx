@@ -6,7 +6,7 @@ import { getCategories } from "@/services/listingService";
 
 interface FilterPanelProps {
   filters: ListingFilters;
-  onChange: (filters: ListingFilters) => void;
+  onChange: (filters: ListingFilters | ((prev: ListingFilters) => ListingFilters)) => void;
   allTags: string[];
 }
 

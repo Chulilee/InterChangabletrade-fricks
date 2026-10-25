@@ -6,6 +6,7 @@ import { NotificationPreferencesPanel } from "@/components/NotificationPreferenc
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 
+import { updateProfile as apiUpdateProfile } from "@/services/profileService";
 import type { ProfileUpdate, UserPreferences } from "@/types/profile";
 
 interface SettingsSectionProps {
@@ -213,10 +214,14 @@ export function SettingsClient() {
   const isSaving = (section: string) => savingSections.has(section);
 
   const handleUpdate = useCallback(
-    async (section: string, update: ProfileUpdate) => {
+    async (section: string, update: ProfileUpdate): Promise<boolean> => {
       setSavingSections((prev) => new Set([...prev, section]));
       try {
         await apiUpdateProfile(update);
+        return true;
+      } catch (error) {
+        console.error(`Failed to update ${section}:`, error);
+        return false;
       } finally {
         setSavingSections((prev) => {
           const next = new Set(prev);
