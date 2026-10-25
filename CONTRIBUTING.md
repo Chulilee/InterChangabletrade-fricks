@@ -1,4 +1,4 @@
-# Contributing to InterChangableTrade-Fricks
+# Contributing to InterChangabletrade-fricks
 
 Thanks for your interest in contributing! This document outlines the local
 setup and conventions for the frontend.

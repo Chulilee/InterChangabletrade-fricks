@@ -23,9 +23,9 @@ import {
 } from "@/components/LandingMotion";
 
 const stats = [
-  { value: "$2.4B", label: "Volume traded" },
-  { value: "36K", label: "Active wallets" },
-  { value: "94%", label: "On-chain settlement" },
+  { value: "Testnet", label: "Current network" },
+  { value: "3", label: "Wallet integrations" },
+  { value: "DEX", label: "Native settlement" },
 ];
 
 const steps = [
@@ -75,7 +75,7 @@ const features = [
 
 const highlights = [
   "Self-custody wallet sign-in",
-  "Soroban smart contract settlement",
+  "Native Stellar DEX settlement",
   "Real-time order book & analytics",
   "No hidden fees",
 ];
@@ -117,7 +117,7 @@ export default function HomePage() {
                   aria-hidden="true"
                   className="h-px w-8 bg-gradient-to-r from-transparent to-sky-600"
                 />
-                Powered by Stellar &amp; Soroban
+                Powered by Stellar
               </p>
               </StaggerItem>
 
