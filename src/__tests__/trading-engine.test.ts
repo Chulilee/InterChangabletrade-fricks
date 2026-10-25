@@ -267,6 +267,46 @@ describe('TradingEngine', () => {
 
       expect(order).toBeNull();
     });
+
+    it('should clean up expired rate limit entries', () => {
+      // Use a short window so entries expire quickly.
+      engine.setRateLimitConfig({
+        perClient: { windowMs: 50, maxRequests: 10 },
+        perIp: { windowMs: 50, maxRequests: 10 },
+      });
+
+      // Populate both maps.
+      engine.submitOrder({
+        pair: 'XLM/USD',
+        side: 'buy',
+        type: 'limit',
+        price: 0.5,
+        quantity: 1,
+        clientId: 'client-a',
+        clientIp: '1.2.3.4',
+      });
+      engine.submitOrder({
+        pair: 'XLM/USD',
+        side: 'buy',
+        type: 'limit',
+        price: 0.5,
+        quantity: 1,
+        clientId: 'client-b',
+        clientIp: '5.6.7.8',
+      });
+
+      expect(engine.getClientRateLimitCount()).toBe(2);
+      expect(engine.getIpRateLimitCount()).toBe(2);
+
+      // Advance time past the window and clean up.
+      jest.useFakeTimers();
+      jest.advanceTimersByTime(100);
+      engine.cleanupExpiredRateLimitEntries();
+      jest.useRealTimers();
+
+      expect(engine.getClientRateLimitCount()).toBe(0);
+      expect(engine.getIpRateLimitCount()).toBe(0);
+    });
   });
 
   describe('concurrency', () => {
