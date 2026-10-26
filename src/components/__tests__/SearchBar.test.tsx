@@ -33,6 +33,8 @@ describe("SearchBar", () => {
       <SearchBar value="" suggestions={["Downtown Loft", "Gold Bar"]} onChange={onChange} />,
     );
     const input = screen.getByLabelText("Search listings");
+    // Type a character so the suggestions dropdown opens on focus.
+    fireEvent.change(input, { target: { value: "Downtown" } });
     fireEvent.focus(input);
 
     const suggestion = screen.getByRole("option", { name: "Downtown Loft" });

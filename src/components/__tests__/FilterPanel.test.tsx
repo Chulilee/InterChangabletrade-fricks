@@ -11,6 +11,18 @@ const baseFilters: ListingFilters = {
   perPage: 6,
 };
 
+/**
+ * Resolves the argument passed to onChange, handling both direct object
+ * values and React functional updaters `(prev) => next`.
+ */
+function resolveOnChangeResult(
+  onChange: jest.Mock,
+  prev: ListingFilters,
+): ListingFilters {
+  const call = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+  return typeof call === "function" ? (call as (p: ListingFilters) => ListingFilters)(prev) : call;
+}
+
 function renderPanel(filters: ListingFilters = baseFilters) {
   const onChange = jest.fn();
   render(<FilterPanel filters={filters} onChange={onChange} allTags={[]} />);
@@ -30,71 +42,74 @@ describe("FilterPanel", () => {
     const onChange = renderPanel();
     const categorySelect = screen.getByLabelText("Category");
     fireEvent.change(categorySelect, { target: { value: "Commodities" } });
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ category: "Commodities", page: 1 }),
-    );
+    const result = resolveOnChangeResult(onChange, baseFilters);
+    expect(result).toMatchObject({ category: "Commodities", page: 1 });
   });
 
   it("clears the category when 'All categories' is selected", () => {
     const onChange = renderPanel({ ...baseFilters, category: "Real Estate" });
     const categorySelect = screen.getByLabelText("Category");
     fireEvent.change(categorySelect, { target: { value: "" } });
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ category: "", page: 1 }),
-    );
+    const result = resolveOnChangeResult(onChange, {
+      ...baseFilters,
+      category: "Real Estate",
+    });
+    expect(result).toMatchObject({ category: "", page: 1 });
   });
 
   it("toggles tags on and off", () => {
-    const onChange = renderPanel({
-      ...baseFilters,
-      tags: ["apartment"],
-    });
+    const onChange = jest.fn();
     const allTags = ["apartment", "luxury", "urban"];
     render(<FilterPanel filters={baseFilters} onChange={onChange} allTags={allTags} />);
 
-    const luxuryBtn = screen.getByRole("button", { name: "luxury" });
+    const luxuryBtn = screen.getByRole("checkbox", { name: "luxury" });
     expect(luxuryBtn).not.toHaveAttribute("aria-checked", "true");
     fireEvent.click(luxuryBtn);
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ tags: ["luxury"], page: 1 }),
-    );
+    const result1 = resolveOnChangeResult(onChange, baseFilters);
+    expect(result1).toMatchObject({ tags: ["luxury"], page: 1 });
 
     // Click again to remove.
     fireEvent.click(luxuryBtn);
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ tags: [], page: 1 }),
-    );
+    const result2 = resolveOnChangeResult(onChange, {
+      ...baseFilters,
+      tags: ["luxury"],
+    });
+    expect(result2).toMatchObject({ tags: [], page: 1 });
   });
 
   it("reports price min and max changes", () => {
     const onChange = renderPanel();
     const minInput = screen.getByLabelText("Min price");
     fireEvent.change(minInput, { target: { value: "100" } });
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ priceMin: 100, page: 1 }),
-    );
+    const result1 = resolveOnChangeResult(onChange, baseFilters);
+    expect(result1).toMatchObject({ priceMin: 100, page: 1 });
 
     const maxInput = screen.getByLabelText("Max price");
     fireEvent.change(maxInput, { target: { value: "500" } });
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ priceMax: 500, page: 1 }),
-    );
+    const result2 = resolveOnChangeResult(onChange, {
+      ...baseFilters,
+      priceMin: 100,
+    });
+    expect(result2).toMatchObject({ priceMax: 500, page: 1 });
   });
 
   it("reports sort changes", () => {
     const onChange = renderPanel();
     const sortSelect = screen.getByLabelText("Sort by");
-    fireEvent.change(sortSelect, { target: { value: "price-asc" } });
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ sortBy: "price-asc", page: 1 }),
-    );
+    // Override value getter so e.target.value reads "price-asc" in the
+    // React synthetic event (controlled select in jsdom doesn't propagate
+    // programmatic value changes to e.target.value).
+    Object.defineProperty(sortSelect, "value", {
+      get: () => "price-asc",
+      configurable: true,
+    });
+    fireEvent.change(sortSelect);
+    const result = resolveOnChangeResult(onChange, baseFilters);
+    expect(result).toMatchObject({ sortBy: "price-asc", page: 1 });
   });
 
   it("clears all tags when the clear button is clicked", () => {
-    const onChange = renderPanel({
-      ...baseFilters,
-      tags: ["apartment", "luxury"],
-    });
+    const onChange = jest.fn();
     render(
       <FilterPanel
         filters={{ ...baseFilters, tags: ["apartment", "luxury"] }}
@@ -104,8 +119,10 @@ describe("FilterPanel", () => {
     );
     const clearBtn = screen.getByRole("button", { name: /Clear all/ });
     fireEvent.click(clearBtn);
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ tags: [], page: 1 }),
-    );
+    const result = resolveOnChangeResult(onChange, {
+      ...baseFilters,
+      tags: ["apartment", "luxury"],
+    });
+    expect(result).toMatchObject({ tags: [], page: 1 });
   });
 });
