@@ -164,7 +164,16 @@ export default function HomePage() {
               </StaggerItem>
 
               <StaggerItem>
-              <dl className="mt-14 grid max-w-lg grid-cols-3 gap-8">
+              <dl className="mt-14 grid max-w-lg grid-cols-3 gap-8 relative">
+                <span className="absolute -top-6 left-0 inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800">
+                  <span className="relative flex h-4 w-4">
+                    <span className="absolute inset-0 rounded-full bg-amber-400/30 animate-pulse" />
+                    <span className="relative z-10 flex h-4 w-4 items-center justify-center">
+                      <span className="text-[9px] font-bold text-amber-700">!</span>
+                    </span>
+                  </span>
+                  <span className="font-medium text-amber-800">Demo data</span>
+                </span>
                 {stats.map((stat) => (
                   <div
                     key={stat.label}
@@ -190,6 +199,15 @@ export default function HomePage() {
                 className="absolute -inset-8 rounded-[3rem] bg-gradient-to-br from-sky-100 via-indigo-50 to-slate-100 blur-2xl"
               />
               <div className="relative rounded-[1.75rem] border border-slate-800/40 bg-slate-950 p-6 text-white shadow-2xl shadow-slate-900/20 ring-1 ring-white/5">
+                <span className="absolute -top-3 right-4 inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800">
+                  <span className="relative flex h-4 w-4">
+                    <span className="absolute inset-0 rounded-full bg-amber-400/30 animate-pulse" />
+                    <span className="relative z-10 flex h-4 w-4 items-center justify-center">
+                      <span className="text-[9px] font-bold text-amber-700">!</span>
+                    </span>
+                  </span>
+                  <span className="font-medium text-amber-800">Demo data</span>
+                </span>
                 <div className="flex items-center justify-between border-b border-white/10 pb-5">
                   <p className="text-xs font-medium uppercase tracking-[0.24em] text-slate-400">
                     Portfolio

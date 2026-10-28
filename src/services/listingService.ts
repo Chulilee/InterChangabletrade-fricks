@@ -105,6 +105,22 @@ function seedIfEmpty(): void {
     },
     {
       id: generateId(),
+      title: "Silver Coin - 1 oz Fine Silver",
+      description:
+        "Tokenized 1 troy ounce .999 fine silver coin, securely vaulted and insured.",
+      price: 1_500,
+      currency: "USDC",
+      images: [],
+      category: "Commodities",
+      tags: ["silver", "precious-metal", "bullion", "physical-redemption"],
+      sellerId: "seller_6",
+      sellerName: "BullionTrust",
+      status: "active",
+      createdAt: Date.now() - 86400000,
+      updatedAt: Date.now() - 86400000,
+    },
+    {
+      id: generateId(),
       title: "Vintage Watch - Limited Edition",
       description:
         "Tokenized ownership of a rare vintage timepiece held in secure custody in Zurich.",
@@ -143,6 +159,21 @@ export async function getListings(
 
   if (filters.category) {
     items = items.filter((l) => l.category === filters.category);
+  }
+
+  if (filters.tags?.length) {
+    const tagSet = new Set(filters.tags.map((t) => t.toLowerCase()));
+    items = items.filter((l) =>
+      l.tags.some((t) => tagSet.has(t.toLowerCase())),
+    );
+  }
+
+  if (filters.priceMin !== undefined) {
+    items = items.filter((l) => l.price >= filters.priceMin!);
+  }
+
+  if (filters.priceMax !== undefined) {
+    items = items.filter((l) => l.price <= filters.priceMax!);
   }
 
   if (filters.sortBy === "price-asc") {

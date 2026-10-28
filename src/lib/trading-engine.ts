@@ -59,6 +59,19 @@ export class TradingEngine {
   
   // Client order index for O(1) lookup of orders by clientId
   private clientOrderIndex: Map<string, Set<string>> = new Map();
+  
+  // Periodic cleanup timer for expired rate limit entries (prevents unbounded
+  // Map growth in long-running processes).
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
+
+  constructor() {
+    // Clean up expired rate limit entries periodically so long-running
+    // processes do not retain stale client/IP rate limit state forever.
+    this.cleanupTimer = setInterval(() => {
+      this.cleanupExpiredRateLimitEntries();
+    }, 60_000);
+    this.cleanupTimer.unref?.();
+  }
 
   onEvent(handler: EventHandler): void {
     this.eventHandlers.push(handler);
@@ -694,6 +707,38 @@ export class TradingEngine {
    */
   removePremiumClient(clientId: string): void {
     this.rateLimitConfig.premium.clientIds.delete(clientId);
+  }
+
+  /**
+   * Remove expired entries from the client and IP rate limit maps.
+   *
+   * Entries whose `resetTime` has passed are stale: the client/IP will get a
+   * fresh window on its next request, so there is no reason to keep them.
+   * Running this periodically bounds Map growth regardless of how many
+   * distinct clients ever connect.
+   */
+  cleanupExpiredRateLimitEntries(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.clientRateLimits) {
+      if (now > entry.resetTime) {
+        this.clientRateLimits.delete(key);
+      }
+    }
+    for (const [key, entry] of this.ipRateLimits) {
+      if (now > entry.resetTime) {
+        this.ipRateLimits.delete(key);
+      }
+    }
+  }
+
+  /** Number of entries currently tracked in the client rate limit map. */
+  getClientRateLimitCount(): number {
+    return this.clientRateLimits.size;
+  }
+
+  /** Number of entries currently tracked in the IP rate limit map. */
+  getIpRateLimitCount(): number {
+    return this.ipRateLimits.size;
   }
 
   /**

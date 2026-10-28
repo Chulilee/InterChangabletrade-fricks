@@ -1,9 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, startTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Listing, ListingFilters, PaginatedListings } from "@/types/listing";
-import { getListings, getCategories } from "@/services/listingService";
+import { getListings } from "@/services/listingService";
 import { ListingCard } from "@/components/ListingCard";
+import { SearchBar } from "@/components/SearchBar";
+import { FilterPanel } from "@/components/FilterPanel";
 
 interface ListingListProps {
   onEdit?: (listing: Listing) => void;
@@ -11,73 +14,125 @@ interface ListingListProps {
   refreshKey?: number;
 }
 
+function parseFiltersFromSearchParams(searchParams: URLSearchParams): ListingFilters {
+  const tagsParam = searchParams.get("tags");
+  const tags = tagsParam ? tagsParam.split(",").filter(Boolean) : [];
+
+  return {
+    search: searchParams.get("search") ?? "",
+    category: searchParams.get("category") ?? "",
+    tags: tags.length > 0 ? tags : [],
+    priceMin: searchParams.get("priceMin")
+      ? Number(searchParams.get("priceMin"))
+      : undefined,
+    priceMax: searchParams.get("priceMax")
+      ? Number(searchParams.get("priceMax"))
+      : undefined,
+    sortBy: (searchParams.get("sortBy") as ListingFilters["sortBy"]) ?? "date",
+    page: Number(searchParams.get("page")) || 1,
+    perPage: Number(searchParams.get("perPage")) || 6,
+  };
+}
+
+function filtersToSearchParams(f: ListingFilters): URLSearchParams {
+  const params = new URLSearchParams();
+  if (f.search) params.set("search", f.search);
+  if (f.category) params.set("category", f.category);
+  if (f.tags?.length) params.set("tags", f.tags.join(","));
+  if (f.priceMin !== undefined) params.set("priceMin", String(f.priceMin));
+  if (f.priceMax !== undefined) params.set("priceMax", String(f.priceMax));
+  if (f.sortBy) params.set("sortBy", f.sortBy);
+  params.set("page", String(f.page));
+  params.set("perPage", String(f.perPage));
+  return params;
+}
+
 export function ListingList({ onEdit, onFindMatches, refreshKey }: ListingListProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [filters, setFilters] = useState<ListingFilters>(() =>
+    parseFiltersFromSearchParams(searchParams),
+  );
+
+  // Re-parse when the URL changes externally (e.g. back/forward navigation).
+  useEffect(() => {
+    setFilters(parseFiltersFromSearchParams(searchParams));
+  }, [searchParams]);
+
   const [data, setData] = useState<PaginatedListings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<ListingFilters>({
-    search: "",
-    category: "",
-    sortBy: "date",
-    page: 1,
-    perPage: 6,
-  });
-
-  const categories = getCategories();
 
   const fetchListings = useCallback(async (f: ListingFilters) => {
     setLoading(true);
-    const result = await getListings(f);
-    setData(result);
-    setLoading(false);
+    try {
+      const result = await getListings(f);
+      setData(result);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  // Re-fetch whenever filters change and push the new query to the URL so the
+  // current view is bookmarkable / shareable.
   useEffect(() => {
     void fetchListings(filters);
-  }, [filters, fetchListings, refreshKey]);
+    startTransition(() => {
+      router.replace(
+        `?${filtersToSearchParams(filters).toString()}`,
+        { scroll: false },
+      );
+    });
+  }, [filters, fetchListings, router, refreshKey]);
 
   const totalPages = data?.totalPages ?? 1;
 
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    data?.items.forEach((item) => {
+      item.tags.forEach((t) => tagSet.add(t));
+    });
+    return Array.from(tagSet).sort((a, b) => a.localeCompare(b));
+  }, [data]);
+
+  const searchSuggestions = useMemo(() => {
+    const q = (filters.search ?? "").toLowerCase();
+    if (!q) return [];
+    const seen = new Set<string>();
+    const suggestions: string[] = [];
+    data?.items.forEach((item) => {
+      if (item.title.toLowerCase().includes(q) && !seen.has(item.title)) {
+        seen.add(item.title);
+        suggestions.push(item.title);
+      }
+      item.tags
+        .filter((t) => t.toLowerCase().includes(q))
+        .forEach((t) => {
+          if (!seen.has(t)) {
+            seen.add(t);
+            suggestions.push(t);
+          }
+        }
+      );
+    });
+    return suggestions.slice(0, 5);
+  }, [filters.search, data]);
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <input
-          type="text"
-          placeholder="Search listings..."
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-3">
+        <SearchBar
           value={filters.search ?? ""}
-          onChange={(e) =>
-            setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))
+          suggestions={searchSuggestions}
+          onChange={(search) =>
+            setFilters((f) => ({ ...f, search, page: 1 }))
           }
-          className="flex-1 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
         />
-        <select
-          value={filters.category ?? ""}
-          onChange={(e) =>
-            setFilters((f) => ({ ...f, category: e.target.value, page: 1 }))
-          }
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-        >
-          <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        <select
-          value={filters.sortBy ?? "date"}
-          onChange={(e) =>
-            setFilters((f) => ({
-              ...f,
-              sortBy: e.target.value as ListingFilters["sortBy"],
-              page: 1,
-            }))
-          }
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-        >
-          <option value="date">Newest first</option>
-          <option value="price-asc">Price: low to high</option>
-          <option value="price-desc">Price: high to low</option>
-        </select>
+        <FilterPanel
+          filters={filters}
+          allTags={allTags}
+          onChange={(next) => setFilters(next)}
+        />
       </div>
 
       {loading ? (
@@ -102,7 +157,9 @@ export function ListingList({ onEdit, onFindMatches, refreshKey }: ListingListPr
               <button
                 type="button"
                 disabled={filters.page <= 1}
-                onClick={() => setFilters((f) => ({ ...f, page: f.page - 1 }))}
+                onClick={() =>
+                  setFilters((f) => ({ ...f, page: f.page - 1 }))
+                }
                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Previous
@@ -113,7 +170,9 @@ export function ListingList({ onEdit, onFindMatches, refreshKey }: ListingListPr
               <button
                 type="button"
                 disabled={filters.page >= totalPages}
-                onClick={() => setFilters((f) => ({ ...f, page: f.page + 1 }))}
+                onClick={() =>
+                  setFilters((f) => ({ ...f, page: f.page + 1 }))
+                }
                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Next

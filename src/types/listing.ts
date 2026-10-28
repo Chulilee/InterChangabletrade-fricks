@@ -43,6 +43,9 @@ export interface TradeMatchResult {
 export interface ListingFilters {
   search?: string;
   category?: string;
+  tags?: string[];
+  priceMin?: number;
+  priceMax?: number;
   sortBy?: "date" | "price-asc" | "price-desc";
   page: number;
   perPage: number;

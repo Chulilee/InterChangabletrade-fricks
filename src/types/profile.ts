@@ -11,6 +11,12 @@ export interface UserPreferences {
   language: string;
   /** Theme preference. */
   theme: "light" | "dark" | "system";
+  /** Use a compact layout density across the app. */
+  compactLayout: boolean;
+  /** Whether the user's profile is visible to other users. */
+  profileVisible: boolean;
+  /** Whether the user's listings are visible in marketplace search. */
+  listingsVisible: boolean;
 }
 
 export interface UserSettings {
@@ -31,6 +37,12 @@ export interface ProfileUpdate {
   language?: string;
   /** Updated theme. */
   theme?: "light" | "dark" | "system";
+  /** Updated compact layout preference. */
+  compactLayout?: boolean;
+  /** Updated profile visibility preference. */
+  profileVisible?: boolean;
+  /** Updated listings visibility preference. */
+  listingsVisible?: boolean;
 }
 
 export interface AvatarUploadResult {
@@ -48,6 +60,9 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   emailNotificationsEnabled: false,
   language: "en",
   theme: "system",
+  compactLayout: false,
+  profileVisible: true,
+  listingsVisible: true,
 };
 
 /** Maximum avatar file size in bytes (2 MB). */

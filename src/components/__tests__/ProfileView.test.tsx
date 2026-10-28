@@ -16,6 +16,9 @@ function makeUser(overrides: Partial<User> = {}): User & { preferences: UserPref
       emailNotificationsEnabled: false,
       language: "en",
       theme: "system",
+      compactLayout: false,
+      profileVisible: true,
+      listingsVisible: true,
     },
   };
 }

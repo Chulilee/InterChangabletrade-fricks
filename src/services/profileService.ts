@@ -99,6 +99,9 @@ export function updateProfile(update: ProfileUpdate): UserSettings {
     ...(update.emailNotificationsEnabled !== undefined && { emailNotificationsEnabled: update.emailNotificationsEnabled }),
     ...(update.language !== undefined && { language: update.language }),
     ...(update.theme !== undefined && { theme: update.theme }),
+    ...(update.compactLayout !== undefined && { compactLayout: update.compactLayout }),
+    ...(update.profileVisible !== undefined && { profileVisible: update.profileVisible }),
+    ...(update.listingsVisible !== undefined && { listingsVisible: update.listingsVisible }),
   };
 
   const newSettings: UserSettings = {
