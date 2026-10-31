@@ -10,14 +10,14 @@ export function OrderBook({ bids, asks }: { bids: OrderBookEntry[], asks: OrderB
   );
 
   return (
-    <div className="flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden">
+    <div className="flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden" data-testid="order-book">
       <div className="px-4 py-3 border-b border-border bg-muted/20">
-        <h3 className="font-semibold text-sm tracking-wide text-foreground">Order Book</h3>
+        <h3 className="font-semibold text-sm tracking-wide text-foreground" data-testid="order-book-title">Order Book</h3>
       </div>
       
       <div className="flex-1 flex flex-col p-2 gap-1 overflow-hidden text-xs font-mono">
         {/* Asks (Sell Orders - Red) */}
-        <div className="flex-1 flex flex-col-reverse overflow-hidden justify-end">
+        <div className="flex-1 flex flex-col-reverse overflow-hidden justify-end" data-testid="order-book-asks">
           {asks.slice().reverse().map((ask) => (
             <OrderRow 
               key={`ask-${ask.price}`} 
@@ -31,14 +31,14 @@ export function OrderBook({ bids, asks }: { bids: OrderBookEntry[], asks: OrderB
         </div>
         
         {/* Spread / Mid Market Price */}
-        <div className="py-2 flex items-center justify-center border-y border-border/50 bg-muted/10 my-1">
+        <div className="py-2 flex items-center justify-center border-y border-border/50 bg-muted/10 my-1" data-testid="order-book-mid">
           <span className="text-lg font-bold text-success">
             {asks[0] ? (asks[0].price - 0.5).toFixed(1) : "---"}
           </span>
         </div>
 
         {/* Bids (Buy Orders - Green) */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden" data-testid="order-book-bids">
           {bids.map((bid) => (
             <OrderRow 
               key={`bid-${bid.price}`} 
@@ -68,7 +68,10 @@ function OrderRow({ type, price, size, total, maxTotal }: { type: 'bid'|'ask', p
   }, [size]);
 
   return (
-    <div className="relative flex justify-between items-center px-2 py-1 hover:bg-muted/50 cursor-pointer group">
+    <div
+      className="relative flex justify-between items-center px-2 py-1 hover:bg-muted/50 cursor-pointer group"
+      data-testid={`book-row-${type}-${price.toFixed(2)}`}
+    >
       {/* Depth Background */}
       <div 
         className={cn(

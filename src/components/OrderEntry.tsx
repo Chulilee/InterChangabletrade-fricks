@@ -80,9 +80,9 @@ export function OrderEntry({
   };
 
   return (
-    <div className="flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden">
+    <div className="flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden" data-testid="order-entry">
       <div className="px-4 py-3 border-b border-border bg-muted/20">
-        <h3 className="font-semibold text-sm tracking-wide text-foreground">Order Entry</h3>
+        <h3 className="font-semibold text-sm tracking-wide text-foreground" data-testid="order-entry-title">Order Entry</h3>
       </div>
       
       <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4 flex-1">
@@ -95,6 +95,7 @@ export function OrderEntry({
               orderType === "limit" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             )}
             onClick={() => handleOrderTypeChange("limit")}
+            data-testid="order-type-limit"
           >
             Limit
           </button>
@@ -105,6 +106,7 @@ export function OrderEntry({
               orderType === "market" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             )}
             onClick={() => handleOrderTypeChange("market")}
+            data-testid="order-type-market"
           >
             Market
           </button>
@@ -131,6 +133,7 @@ export function OrderEntry({
                 : "bg-muted/10 text-muted-foreground border-transparent hover:bg-muted/30"
             )}
             onClick={() => setSide("buy")}
+            data-testid="side-buy"
           >
             Buy
           </button>
@@ -143,6 +146,7 @@ export function OrderEntry({
                 : "bg-muted/10 text-muted-foreground border-transparent hover:bg-muted/30"
             )}
             onClick={() => setSide("sell")}
+            data-testid="side-sell"
           >
             Sell
           </button>
@@ -163,6 +167,7 @@ export function OrderEntry({
                 onChange={e => setPrice(e.target.value)}
                 className="w-full bg-background border border-border rounded-lg pl-14 pr-3 py-2 text-sm text-right focus:outline-none focus:border-primary transition-colors"
                 step="0.01"
+                data-testid="order-entry-price-input"
               />
             </div>
           ) : (
@@ -194,6 +199,7 @@ export function OrderEntry({
               onChange={e => setSize(e.target.value)}
               className="w-full bg-background border border-border rounded-lg pl-14 pr-3 py-2 text-sm text-right focus:outline-none focus:border-primary transition-colors"
               step="0.0001"
+              data-testid="order-entry-size-input"
             />
           </div>
         </div>
@@ -228,6 +234,7 @@ export function OrderEntry({
             "mt-auto w-full py-3 rounded-lg font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:hover:opacity-40",
             side === "buy" ? "bg-success" : "bg-danger"
           )}
+          data-testid="order-entry-submit"
         >
           {side === "buy" ? "Buy" : "Sell"}
         </button>
