@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import type { WalletContextValue, WalletState } from "@/types/wallet";
 import {
+  classifyConnectError,
   connectWallet,
   disconnectWallet,
   getConnectedAddress,
+  getAvailableWallets,
 } from "@/lib/stellar/wallet";
 import {
   accountExists,
@@ -64,6 +66,19 @@ export function useWallet(): WalletContextValue {
   const connect = useCallback(async () => {
     setState((prev) => ({ ...prev, isConnecting: true, error: null }));
     try {
+      // Fail fast with a clear message when no wallet is detected instead of
+      // opening the selection modal, which would close itself immediately.
+      const wallets = await getAvailableWallets();
+      if (wallets.length === 0) {
+        setState((prev) => ({
+          ...prev,
+          isConnecting: false,
+          error:
+            "Wallet not installed. Install Freighter or xBull, or connect via Albedo.",
+        }));
+        return;
+      }
+
       const address = await connectWallet();
       window.localStorage.setItem(STORAGE_KEY, address);
       setState((prev) => ({
@@ -74,10 +89,13 @@ export function useWallet(): WalletContextValue {
       }));
       void loadBalance(address);
     } catch (err) {
+      // Log the raw failure for debugging; surface a message that matches the
+      // failure mode (user rejected, no wallet, network problem, …).
+      console.error("[useWallet] connect failed:", err);
       setState((prev) => ({
         ...prev,
         isConnecting: false,
-        error: err instanceof Error ? err.message : "Failed to connect wallet.",
+        error: classifyConnectError(err),
       }));
     }
   }, [loadBalance]);
