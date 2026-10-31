@@ -68,11 +68,20 @@ export async function getAvailableWallets(): Promise<
 > {
   try {
     const kit = await getKit();
-    if (typeof kit.getInstalledWallets !== "function") {
+    // The installed-wallet API is not part of the kit's declared type surface
+    // in every 2.x release we may resolve against, so access it structurally:
+    // when the method is missing at runtime the result is an empty list.
+    const withDetection = kit as unknown as {
+      getInstalledWallets?: () => Promise<Array<{ id?: string; name?: string }>>;
+    };
+    if (typeof withDetection.getInstalledWallets !== "function") {
       return [];
     }
-    const wallets = await kit.getInstalledWallets();
-    return wallets.map((wallet) => ({ id: wallet.id, name: wallet.name }));
+    const wallets = await withDetection.getInstalledWallets();
+    return wallets.map((wallet) => ({
+      id: String(wallet?.id ?? ""),
+      name: String(wallet?.name ?? ""),
+    }));
   } catch {
     /* detection is best-effort; an empty result gates connect() in the hook */
     return [];
