@@ -40,7 +40,7 @@ function TradeRow({ trade }: { trade: TradeEntry }) {
     second: "2-digit" 
   });
 
-  const isBuy = trade.side === "buy";
+  const isBuy = (trade.takerSide ?? trade.side) === "buy";
 
   return (
     <div className={cn(

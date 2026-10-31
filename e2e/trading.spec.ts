@@ -1,35 +1,31 @@
 import { test, expect } from '@playwright/test';
+import { TradingPage } from './pages/TradingPage';
 
+/**
+ * User journey over the trading dashboard.
+ *
+ * Selectors go through the TradingPage page object, which is anchored on
+ * data-testid attributes: copy or styling changes must not break the suite.
+ */
 test('Trading Dashboard User Journey', async ({ page }) => {
-  // Load page
-  await page.goto('/');
+  const trading = new TradingPage(page);
 
-  // Verify components render
-  await expect(page.locator('h2', { hasText: 'BTC/USD' })).toBeVisible();
-  await expect(page.locator('h3', { hasText: 'Order Book' })).toBeVisible();
-  await expect(page.locator('h3', { hasText: 'Order Entry' })).toBeVisible();
-  await expect(page.locator('h3', { hasText: 'My Orders' })).toBeVisible();
+  // Load page and verify the panels render
+  await trading.open();
+  await expect(trading.orderBookBids).toBeVisible();
+  await expect(trading.orderBookAsks).toBeVisible();
 
-  // Enter order details
-  await page.getByRole('button', { name: 'Limit' }).click();
-  await page.getByRole('button', { name: 'Buy' }).click();
-  
-  // Fill size input (second input is Size)
-  const sizeInput = page.locator('input[type="number"]').nth(1);
-  await sizeInput.fill('0.5');
+  // Enter order details and submit
+  await trading.placeLimitBuyOrder('0.5');
 
-  // Submit order
-  await page.locator('button[type="submit"]').click();
-
-  // Verify optimistic UI
-  await expect(page.locator('td', { hasText: 'buy' })).toBeVisible();
-  await expect(page.locator('td', { hasText: '0.5000' })).toBeVisible();
+  // Verify optimistic UI in the My Orders table
+  const row = trading.firstOrderRow();
+  await expect(row.getByTestId('order-side')).toHaveText('buy');
+  await expect(row.getByTestId('order-size')).toHaveText('0.5000');
 
   // Cancel order flow
-  const cancelButton = page.locator('button', { hasText: 'Cancel' });
-  await expect(cancelButton).toBeVisible();
-  await cancelButton.click();
+  await trading.cancelFirstOrder();
 
   // Verify cancellation
-  await expect(page.locator('span', { hasText: 'Cancelled' })).toBeVisible();
+  await expect(row.getByTestId('order-status-cancelled')).toBeVisible();
 });

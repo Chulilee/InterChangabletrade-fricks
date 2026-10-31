@@ -487,6 +487,8 @@ export class TradingEngine {
       makerOrderId: restingOrder.id,
       pair: incomingOrder.pair,
       side: incomingOrder.side,
+      makerSide: restingOrder.side,
+      takerSide: incomingOrder.side,
       price: matchPrice,
       quantity: matchQuantity,
       timestamp: Date.now(),
@@ -910,6 +912,9 @@ export class TradingEngine {
     limit: number;
     totalPages: number;
   } {
+    // Trades are returned with both perspectives: `side`/`takerSide` describe
+    // the incoming (taker) order and `makerSide` the resting order each fill
+    // was executed against, so history can display the market-perspective side.
     const pairTrades = this.trades.get(pair) || [];
     
     // Sort trades by timestamp descending (newest first)

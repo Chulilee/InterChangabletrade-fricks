@@ -55,6 +55,14 @@ import { getTradingEngine } from '@/lib/trading-instance';
  *                       side:
  *                         type: string
  *                         enum: [buy, sell]
+ *                       makerSide:
+ *                         type: string
+ *                         enum: [buy, sell]
+ *                         description: Side of the resting maker order behind the trade
+ *                       takerSide:
+ *                         type: string
+ *                         enum: [buy, sell]
+ *                         description: Side of the incoming taker order (market perspective)
  *                       price:
  *                         type: number
  *                       quantity:

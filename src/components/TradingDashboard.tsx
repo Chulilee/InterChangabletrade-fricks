@@ -34,13 +34,16 @@ export function TradingDashboard() {
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-6 py-12">
+    <section className="mx-auto max-w-6xl px-6 py-12" data-testid="trading-dashboard">
       <div className="mb-10">
         <p className="inline-flex items-center gap-3 text-xs font-medium uppercase tracking-[0.28em] text-sky-700">
           <span aria-hidden="true" className="h-px w-8 bg-sky-600/60" />
           Live market
         </p>
-        <h2 className="mt-4 font-display text-4xl font-medium tracking-tight">
+        <h2
+          className="mt-4 font-display text-4xl font-medium tracking-tight"
+          data-testid="trading-pair"
+        >
           BTC/USD
         </h2>
         <p className="mt-2 text-[15px] text-brand-muted">
@@ -48,7 +51,7 @@ export function TradingDashboard() {
         </p>
       </div>
 
-      <div className="grid min-h-[32rem] gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+      <div className="grid min-h-[32rem] gap-6 lg:grid-cols-[1.2fr_0.8fr]" data-testid="trading-panels">
         <OrderBook bids={bids} asks={asks} />
         <OrderEntry currentPrice={40000} onPlaceOrder={handlePlaceOrder} />
       </div>

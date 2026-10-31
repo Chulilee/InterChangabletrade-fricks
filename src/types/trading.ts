@@ -46,7 +46,15 @@ export interface Fill {
   orderId: string;
   makerOrderId: string;
   pair: string;
+  /** Side of the incoming (taker) order that generated this fill. */
   side: OrderSide;
+  /** Side of the resting (maker) order this fill was executed against. */
+  makerSide: OrderSide;
+  /**
+   * Side of the taker, kept explicit so trade-history display can reason from
+   * the market perspective even while `side` stays the incoming order's side.
+   */
+  takerSide: OrderSide;
   price: number;
   quantity: number;
   timestamp: number;
@@ -81,6 +89,13 @@ export interface TradeEntry {
   id: string;
   price: number;
   size: number;
+  /**
+   * Side of the taker (aggressor) when known. Falls back to `side` for
+   * display so the tape always colors trades from the market perspective.
+   */
+  takerSide?: OrderSide;
+  /** Side of the maker (resting) order behind this trade, when known. */
+  makerSide?: OrderSide;
   side: OrderSide;
   time: number;
 }
