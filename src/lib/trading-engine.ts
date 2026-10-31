@@ -487,6 +487,8 @@ export class TradingEngine {
       makerOrderId: restingOrder.id,
       pair: incomingOrder.pair,
       side: incomingOrder.side,
+      makerSide: restingOrder.side,
+      takerSide: incomingOrder.side,
       price: matchPrice,
       quantity: matchQuantity,
       timestamp: Date.now(),
