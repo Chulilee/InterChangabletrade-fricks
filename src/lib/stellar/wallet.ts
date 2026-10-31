@@ -55,6 +55,61 @@ export async function connectWallet(): Promise<string> {
   return address;
 }
 
+/**
+ * List the wallet modules the kit detects as installed in this browser.
+ *
+ * Albedo counts as installed (it is a hosted web flow); Freighter/xBull report
+ * themselves when their extension/app is present. Returns an empty list when
+ * no wallet is available (or detection fails), so callers can fail fast with
+ * a useful message instead of opening a modal that would close itself.
+ */
+export async function getAvailableWallets(): Promise<
+  { id: string; name: string }[]
+> {
+  try {
+    const kit = await getKit();
+    if (typeof kit.getInstalledWallets !== "function") {
+      return [];
+    }
+    const wallets = await kit.getInstalledWallets();
+    return wallets.map((wallet) => ({ id: wallet.id, name: wallet.name }));
+  } catch {
+    /* detection is best-effort; an empty result gates connect() in the hook */
+    return [];
+  }
+}
+
+/**
+ * Map a wallet-connection failure to a user-facing message per failure mode.
+ *
+ * The Stellar Wallets Kit surfaces user rejections and connectivity problems
+ * as plain `Error`s with human-readable messages rather than typed codes, so
+ * this is best-effort message pattern matching with a generic fallback for
+ * the unexpected cases.
+ */
+export function classifyConnectError(err: unknown): string {
+  const text = (
+    err instanceof Error ? err.message : String(err ?? "")
+  ).toLowerCase();
+
+  // User closed the modal or rejected the request from the wallet UI.
+  if (/declin|reject|denied|cancel|abort|dismiss|clos/.test(text)) {
+    return "Connection rejected. Approve the connection request in your wallet and try again.";
+  }
+
+  // No wallet was reachable at all.
+  if (/not.?install|no wallet|wallet.?not|extension|freighter|xbull/.test(text)) {
+    return "Wallet not installed. Install Freighter or xBull, or connect via Albedo.";
+  }
+
+  // Connectivity problems reaching the wallet or the Stellar network.
+  if (/network|offline|timed? ?out|failed to fetch|dns|socket|refused|unreachable/.test(text)) {
+    return "Network error. Check your connection and try again.";
+  }
+
+  return "Failed to connect wallet.";
+}
+
 /** Read the currently connected address from the kit, if any. */
 export async function getConnectedAddress(): Promise<string | null> {
   try {
