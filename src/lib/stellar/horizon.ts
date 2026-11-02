@@ -7,8 +7,11 @@ import {
 } from "@stellar/stellar-sdk";
 import { stellarConfig } from "./config";
 import { toBalances, type Balance } from "./balances";
+import { fundAccountWithFriendbot, FriendbotError } from "./friendbot";
 
 export type { Balance };
+export { FriendbotError };
+export type { FriendbotErrorCode } from "./friendbot";
 
 /** Shared Horizon client pointed at the configured network. */
 export const horizon = new Horizon.Server(stellarConfig.horizonUrl);
@@ -63,24 +66,14 @@ export async function getNativeBalance(publicKey: string): Promise<string> {
 }
 
 /**
- * Fund an account on Testnet via Friendbot. No-op error on the public network,
- * where Friendbot does not exist.
+ * Fund an account on Testnet via Friendbot. Throws `FriendbotError` when the
+ * faucet is unavailable or rejects the request; funding an account that
+ * already exists is treated as success.
  */
 export async function fundWithFriendbot(publicKey: string): Promise<void> {
-  if (!stellarConfig.friendbotUrl) {
-    throw new Error("Friendbot funding is only available on Testnet.");
-  }
-  const res = await fetch(
-    `${stellarConfig.friendbotUrl}?addr=${encodeURIComponent(publicKey)}`,
-  );
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    // Friendbot returns 400 if the account is already funded — treat as success.
-    if (body.includes("op_already_exists") || body.includes("createAccountAlreadyExist")) {
-      return;
-    }
-    throw new Error(`Friendbot funding failed (${res.status}): ${body.slice(0, 200)}`);
-  }
+  await fundAccountWithFriendbot(publicKey, {
+    friendbotUrl: stellarConfig.friendbotUrl,
+  });
 }
 
 /** Submit a signed transaction and return the confirmed hash. */
