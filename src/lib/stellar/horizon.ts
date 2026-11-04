@@ -8,6 +8,7 @@ import {
 import { stellarConfig } from "./config";
 import { toBalances, type Balance } from "./balances";
 import { fundAccountWithFriendbot, FriendbotError } from "./friendbot";
+import { assertValidAssetRef } from "./assetValidation";
 
 export type { Balance };
 export { FriendbotError };
@@ -23,6 +24,7 @@ export interface AssetRef {
 }
 
 export function toSdkAsset(ref: AssetRef): Asset {
+  assertValidAssetRef(ref);
   if (!ref.issuer || ref.code.toUpperCase() === "XLM") {
     return Asset.native();
   }

@@ -8,6 +8,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { stellarConfig } from "./config";
 import { horizon, toSdkAsset, isNative, type AssetRef } from "./horizon";
+import { assertValidAssetRef } from "./assetValidation";
 
 const TIMEOUT_SECONDS = 180;
 
@@ -27,6 +28,7 @@ export async function buildTrustlineTx(
   asset: AssetRef,
   limit?: string,
 ): Promise<Transaction> {
+  assertValidAssetRef(asset, "Trustline asset");
   const source = await horizon.loadAccount(publicKey);
   return builder(source)
     .addOperation(
@@ -48,6 +50,7 @@ export async function buildRemoveTrustlineTx(
   publicKey: string,
   asset: AssetRef,
 ): Promise<Transaction> {
+  assertValidAssetRef(asset, "Trustline asset");
   const source = await horizon.loadAccount(publicKey);
   return builder(source)
     .addOperation(
@@ -87,6 +90,9 @@ export interface DexOrderParams {
  */
 export async function buildDexOfferTx(params: DexOrderParams): Promise<Transaction> {
   const { publicKey, base, counter, side, amount, price, offerId = "0" } = params;
+
+  assertValidAssetRef(base, "Base asset");
+  assertValidAssetRef(counter, "Counter asset");
 
   if (isNative(base) && isNative(counter)) {
     throw new Error("Base and counter assets cannot both be native XLM.");
