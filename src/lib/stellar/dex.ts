@@ -8,6 +8,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { stellarConfig } from "./config";
 import { horizon, toSdkAsset, isNative, type AssetRef } from "./horizon";
+import { validateAssetRef } from "./asset-validation";
 
 const TIMEOUT_SECONDS = 180;
 
@@ -90,6 +91,18 @@ export async function buildDexOfferTx(params: DexOrderParams): Promise<Transacti
 
   if (isNative(base) && isNative(counter)) {
     throw new Error("Base and counter assets cannot both be native XLM.");
+  }
+
+  // Reject malformed asset references before they reach the SDK, where a bad
+  // code or issuer would surface as an opaque submission failure.
+  const baseError = validateAssetRef(base);
+  if (baseError) {
+    throw new Error(`Base asset invalid: ${baseError}`);
+  }
+
+  const counterError = validateAssetRef(counter);
+  if (counterError) {
+    throw new Error(`Counter asset invalid: ${counterError}`);
   }
 
   const source = await horizon.loadAccount(publicKey);
