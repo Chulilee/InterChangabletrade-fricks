@@ -75,7 +75,7 @@ describe("buildDexOfferTx asset validation", () => {
           base: { code: "TOOLONGASSETX", issuer: USDC_ISSUER },
         }),
       ),
-    ).rejects.toThrow("Base asset invalid");
+    ).rejects.toThrow('Base asset code "TOOLONGASSETX" is invalid');
   });
 
   it("rejects a base asset code with special characters", async () => {
@@ -85,7 +85,7 @@ describe("buildDexOfferTx asset validation", () => {
           base: { code: "USDC!", issuer: USDC_ISSUER },
         }),
       ),
-    ).rejects.toThrow("Base asset invalid");
+    ).rejects.toThrow('Base asset code "USDC!" is invalid');
   });
 
   it("rejects a base asset with a malformed issuer key", async () => {
@@ -95,7 +95,7 @@ describe("buildDexOfferTx asset validation", () => {
           base: { code: "USDC", issuer: "NOT_A_VALID_KEY" },
         }),
       ),
-    ).rejects.toThrow("Base asset invalid");
+    ).rejects.toThrow('Base asset issuer "NOT_A_VALID_KEY" is not a valid Stellar account ID');
   });
 
   it("rejects a counter asset with a missing issuer", async () => {
@@ -105,7 +105,7 @@ describe("buildDexOfferTx asset validation", () => {
           counter: { code: "USDC", issuer: null },
         }),
       ),
-    ).rejects.toThrow("Counter asset invalid");
+    ).rejects.toThrow("Counter asset issuer is required for the USDC asset");
   });
 
   it("rejects a counter asset code that is empty", async () => {
@@ -115,7 +115,7 @@ describe("buildDexOfferTx asset validation", () => {
           counter: { code: "", issuer: USDC_ISSUER },
         }),
       ),
-    ).rejects.toThrow("Counter asset invalid");
+    ).rejects.toThrow('Counter asset code "" is invalid');
   });
 
   it("rejects before touching Horizon when assets are invalid", async () => {
