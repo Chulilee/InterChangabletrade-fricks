@@ -131,6 +131,47 @@ describe('Order API', () => {
     const response = await submitOrder(request);
     expect(response.status).toBe(400);
   });
+
+  it('rejects orders for unsupported trading pairs', async () => {
+    const request = createMockRequest('http://localhost/api/v1/orders', {
+      method: 'POST',
+      body: JSON.stringify({
+        pair: 'FAKE/USDT',
+        side: 'buy',
+        type: 'limit',
+        price: 100,
+        quantity: 1,
+      }),
+    });
+
+    const response = await submitOrder(request);
+    expect(response.status).toBe(400);
+
+    const data = await response.json();
+    expect(data.error.message).toBe('Unsupported trading pair');
+    expect(data.error.details.pair).toBe('FAKE/USDT');
+    expect(data.error.details.valid).toContain('BTC/USDT');
+  });
+
+  it('accepts another supported pair from the registry', async () => {
+    const request = createMockRequest('http://localhost/api/v1/orders', {
+      method: 'POST',
+      body: JSON.stringify({
+        pair: 'XLM/USDT',
+        side: 'sell',
+        type: 'limit',
+        price: 0.5,
+        quantity: 100,
+      }),
+    });
+
+    const response = await submitOrder(request);
+    expect(response.status).toBe(200);
+
+    const data = await response.json();
+    expect(data.data.pair).toBe('XLM/USDT');
+    expect(data.data.status).toBe('open');
+  });
 });
 
 describe('Market Data API', () => {
