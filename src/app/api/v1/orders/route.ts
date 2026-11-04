@@ -2,6 +2,11 @@ import { NextRequest } from 'next/server';
 import { validateApiKey, hasPermission, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
 import { getTradingEngine } from '@/lib/trading-instance';
 import { getOrderRouter } from '@/lib/order-router/instance';
+import {
+  isFiniteOrderNumber,
+  isSupportedTradingPair,
+  SUPPORTED_TRADING_PAIRS,
+} from '@/lib/trading-pairs';
 import { OrderSide, OrderType, Order } from '@/types/trading';
 
 /**
@@ -30,7 +35,9 @@ import { OrderSide, OrderType, Order } from '@/types/trading';
  *               pair:
  *                 type: string
  *                 example: "BTC/USDT"
- *                 description: Trading pair symbol
+ *                 description: |
+ *                   Trading pair symbol. Must be a supported market:
+ *                   BTC/USDT, ETH/USDT, XLM/USDT, USDC/XLM, XAU/USDT, ACME/USDT.
  *               side:
  *                 type: string
  *                 enum: [buy, sell]
@@ -85,7 +92,9 @@ import { OrderSide, OrderType, Order } from '@/types/trading';
  *                       type: number
  *                       example: 0
  *       400:
- *         description: Invalid request parameters
+ *         description: |
+ *           Invalid request parameters or unsupported trading pair. When the
+ *           pair is not listed, `details.valid` contains the supported pairs.
  *       401:
  *         description: Unauthorized - Invalid or missing API key
  *       429:
@@ -124,13 +133,22 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(400, 'Invalid order type', { valid: ['limit', 'market'] });
     }
 
+    // Validate pair is a supported market. Orders for unknown pairs would
+    // otherwise rest on the book with no possible counterparty.
+    if (!isSupportedTradingPair(pair)) {
+      return createErrorResponse(400, 'Unsupported trading pair', {
+        pair,
+        valid: SUPPORTED_TRADING_PAIRS,
+      });
+    }
+
     // Validate price for limit orders
-    if (type === 'limit' && (!price || price <= 0)) {
+    if (type === 'limit' && (!isFiniteOrderNumber(price) || price <= 0)) {
       return createErrorResponse(400, 'Valid price is required for limit orders');
     }
 
     // Validate quantity
-    if (quantity <= 0) {
+    if (!isFiniteOrderNumber(quantity) || quantity <= 0) {
       return createErrorResponse(400, 'Quantity must be greater than 0');
     }
 
