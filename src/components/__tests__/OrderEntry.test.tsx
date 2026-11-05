@@ -5,7 +5,14 @@ import type { Order } from "@/mocks/server";
 const CURRENT_PRICE = 40000;
 
 function renderEntry(onPlaceOrder = jest.fn(), currentPrice = CURRENT_PRICE) {
-  render(<OrderEntry currentPrice={currentPrice} onPlaceOrder={onPlaceOrder} />);
+  render(
+    <OrderEntry
+      currentPrice={currentPrice}
+      onPlaceOrder={onPlaceOrder}
+      quoteBalance={10_000}
+      baseBalance={1}
+    />,
+  );
   return { onPlaceOrder };
 }
 
@@ -199,7 +206,7 @@ describe("OrderEntry order type and price", () => {
     selectMarketOrderType();
     fireEvent.click(screen.getByRole("button", { name: "50%" }));
 
-    // 10000 USD mock balance at 40000 buys 0.25, so 50% is 0.125.
+    // 10000 USD quote balance at 40000 buys 0.25, so 50% is 0.125.
     expect(sizeInput().valueAsNumber).toBeCloseTo(0.125, 6);
   });
 
@@ -241,5 +248,61 @@ describe("OrderEntry order type and price", () => {
 
     expect(sizeInput().value).toBe("");
     expect(screen.getByTestId("order-value")).toHaveTextContent("--");
+  });
+});
+
+describe("OrderEntry balance props", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("shows the available balance for the active side", () => {
+    render(
+      <OrderEntry
+        currentPrice={CURRENT_PRICE}
+        onPlaceOrder={jest.fn()}
+        quoteBalance={5432.1}
+        baseBalance={0.25}
+      />,
+    );
+
+    expect(screen.getByTestId("available-balance")).toHaveTextContent("5432.10 USD");
+
+    fireEvent.click(sideTab("Sell"));
+    expect(screen.getByTestId("available-balance")).toHaveTextContent("0.2500 BTC");
+  });
+
+  it("sizes the percentage buttons from the real balances", () => {
+    render(
+      <OrderEntry
+        currentPrice={CURRENT_PRICE}
+        onPlaceOrder={jest.fn()}
+        quoteBalance={2000}
+        baseBalance={0.5}
+      />,
+    );
+
+    // Buy 50%: 1000 USD at 40000 = 0.025 BTC.
+    fireEvent.click(screen.getByRole("button", { name: "50%" }));
+    expect(sizeInput().valueAsNumber).toBeCloseTo(0.025, 6);
+
+    // Sell 50%: 50% of the 0.5 BTC balance.
+    fireEvent.click(sideTab("Sell"));
+    fireEvent.click(screen.getByRole("button", { name: "50%" }));
+    expect(sizeInput().valueAsNumber).toBeCloseTo(0.25, 6);
+  });
+
+  it("refuses to size a percentage when the balance is zero", () => {
+    render(
+      <OrderEntry
+        currentPrice={CURRENT_PRICE}
+        onPlaceOrder={jest.fn()}
+        quoteBalance={0}
+        baseBalance={0}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "100%" }));
+    expect(sizeInput().value).toBe("");
   });
 });
