@@ -98,17 +98,17 @@ describe('trading engine persistence', () => {
   });
 
   it('selects backends from the environment', () => {
-    expect(createTradingPersistenceFromEnv({ TRADING_PERSISTENCE: 'none' } as NodeJS.ProcessEnv)).toBeNull();
+    expect(createTradingPersistenceFromEnv({ TRADING_PERSISTENCE: 'none' })).toBeNull();
     expect(
-      createTradingPersistenceFromEnv({ TRADING_PERSISTENCE: 'memory' } as NodeJS.ProcessEnv),
+      createTradingPersistenceFromEnv({ TRADING_PERSISTENCE: 'memory' }),
     ).toBeInstanceOf(InMemoryTradingPersistence);
     expect(
       createTradingPersistenceFromEnv({
         TRADING_PERSISTENCE: 'file',
         TRADING_STATE_PATH: path.join(os.tmpdir(), 'ict-env-state-test.json'),
-      } as NodeJS.ProcessEnv),
+      }),
     ).toBeInstanceOf(FileTradingPersistence);
     // Under NODE_ENV=test the default is no persistence, keeping tests hermetic.
-    expect(createTradingPersistenceFromEnv({ NODE_ENV: 'test' } as NodeJS.ProcessEnv)).toBeNull();
+    expect(createTradingPersistenceFromEnv({ NODE_ENV: 'test' })).toBeNull();
   });
 });

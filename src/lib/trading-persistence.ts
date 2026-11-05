@@ -140,7 +140,7 @@ const DEFAULT_STATE_FILE = '.trading-engine-state.json';
  * under NODE_ENV=test it defaults to `none` so unit tests stay hermetic.
  */
 export function createTradingPersistenceFromEnv(
-  env: NodeJS.ProcessEnv = process.env,
+  env: Record<string, string | undefined> = process.env,
 ): TradingPersistence | null {
   const explicit = env.TRADING_PERSISTENCE?.trim().toLowerCase();
   const kind = explicit ?? (env.NODE_ENV === 'test' ? 'none' : 'file');
