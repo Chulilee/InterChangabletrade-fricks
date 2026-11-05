@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { validateApiKey, hasPermission, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
+import { enforceApiRateLimit } from '@/lib/api-rate-limit';
 import { getTradingEngine } from '@/lib/trading-instance';
 
 /**
@@ -116,6 +117,10 @@ export async function DELETE(
   }
   if (!hasPermission(authResult, 'orders', 'cancel')) {
     return createErrorResponse(403, 'Forbidden', { required: 'orders:cancel' });
+  }
+  const limited = enforceApiRateLimit(request, 'orders:cancel', authResult.clientId);
+  if (limited) {
+    return limited;
   }
 
   const engine = getTradingEngine();
