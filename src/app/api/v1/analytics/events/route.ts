@@ -3,6 +3,7 @@ import {
   createErrorResponse,
   createSuccessResponse,
 } from "@/lib/api-middleware";
+import { enforceApiRateLimit } from "@/lib/api-rate-limit";
 import type { AnalyticsEvent, AnalyticsEventName } from "@/types/analytics";
 
 /**
@@ -77,6 +78,12 @@ const MAX_STORE_SIZE = 10_000;
  *         description: Invalid event payload
  */
 export async function POST(request: NextRequest) {
+  // No API-key auth on this endpoint, so the caller is limited by IP/anonymous key.
+  const limited = enforceApiRateLimit(request, "analytics:events");
+  if (limited) {
+    return limited;
+  }
+
   let body: unknown;
   try {
     body = await request.json();

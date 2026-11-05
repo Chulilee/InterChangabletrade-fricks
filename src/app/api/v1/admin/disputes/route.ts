@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { requireAdmin, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
+import { enforceApiRateLimit } from '@/lib/api-rate-limit';
 import { AdminStore } from '@/lib/admin-store';
 
 const store = new AdminStore();
@@ -50,6 +51,10 @@ export async function POST(request: NextRequest) {
   const guard = await requireAdmin(request);
   if (!guard.ok) {
     return createErrorResponse(403, guard.error ?? 'Forbidden');
+  }
+  const limited = enforceApiRateLimit(request, 'admin:disputes', guard.actor);
+  if (limited) {
+    return limited;
   }
 
   let body: { disputeId?: string; resolution?: string };

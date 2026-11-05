@@ -3,12 +3,30 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-export function OrderEntry({ 
-  currentPrice, 
-  onPlaceOrder 
-}: { 
-  currentPrice: number, 
-  onPlaceOrder: (order: import("@/mocks/server").Order) => void 
+export function OrderEntry({
+  currentPrice,
+  onPlaceOrder,
+  quoteBalance = 0,
+  baseBalance = 0,
+  quoteCurrency = "USD",
+  baseCurrency = "BTC",
+}: {
+  currentPrice: number,
+  onPlaceOrder: (order: import("@/mocks/server").Order) => void,
+  /**
+   * Available balance in the quote currency (e.g. USD). Used for the buy
+   * percentage shortcuts and shown as the available buy-side balance.
+   */
+  quoteBalance?: number,
+  /**
+   * Available balance in the base currency (e.g. BTC). Used for the sell
+   * percentage shortcuts and shown as the available sell-side balance.
+   */
+  baseBalance?: number,
+  /** Ticker shown next to the quote balance. */
+  quoteCurrency?: string,
+  /** Ticker shown next to the base balance. */
+  baseCurrency?: string,
 }) {
   const [orderType, setOrderType] = useState<"limit" | "market">("limit");
   const [side, setSide] = useState<"buy" | "sell">("buy");
@@ -48,17 +66,29 @@ export function OrderEntry({
   // Sync price when currentPrice changes if we haven't touched it?
   // For simplicity, just use state.
 
+  // Spendable balances come from the account via props; anything unusable
+  // (missing, NaN, negative) is treated as zero so the percentage shortcuts
+  // never promise a size the account cannot cover.
+  const spendableQuoteBalance =
+    Number.isFinite(quoteBalance) && quoteBalance > 0 ? quoteBalance : 0;
+  const spendableBaseBalance =
+    Number.isFinite(baseBalance) && baseBalance > 0 ? baseBalance : 0;
+
+  const availableLabel =
+    side === "buy"
+      ? `${spendableQuoteBalance.toFixed(2)} ${quoteCurrency}`
+      : `${spendableBaseBalance.toFixed(4)} ${baseCurrency}`;
+
   const handlePercentage = (percent: number) => {
     if (!hasPrice) return;
 
-    // Mock user balance is 10000 USD or 1 BTC
-    const mockBalance = side === "buy" ? 10000 : 1;
-
     if (side === "buy") {
-      const maxBuySize = mockBalance / effectivePrice;
+      if (spendableQuoteBalance <= 0) return;
+      const maxBuySize = spendableQuoteBalance / effectivePrice;
       setSize((maxBuySize * percent).toFixed(4));
     } else {
-      setSize((mockBalance * percent).toFixed(4));
+      if (spendableBaseBalance <= 0) return;
+      setSize((spendableBaseBalance * percent).toFixed(4));
     }
   };
 
@@ -216,6 +246,14 @@ export function OrderEntry({
               {pct * 100}%
             </button>
           ))}
+        </div>
+
+        {/* Available account balance for the active side */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Available</span>
+          <span data-testid="available-balance" className="font-mono text-foreground">
+            {availableLabel}
+          </span>
         </div>
 
         {/* Order value at the price this order will trade at */}

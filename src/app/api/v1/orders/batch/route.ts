@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { validateApiKey, hasPermission, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
+import { enforceApiRateLimit } from '@/lib/api-rate-limit';
 import { getTradingEngine } from '@/lib/trading-instance';
 import { OrderSide, OrderType } from '@/types/trading';
 
@@ -115,6 +116,10 @@ export async function POST(request: NextRequest) {
     return createErrorResponse(403, 'Forbidden', {
       required: 'orders:create',
     });
+  }
+  const limited = enforceApiRateLimit(request, 'orders:batch', authResult.clientId);
+  if (limited) {
+    return limited;
   }
 
   try {
