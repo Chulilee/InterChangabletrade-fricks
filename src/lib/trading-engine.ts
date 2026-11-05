@@ -9,6 +9,11 @@ import {
   TradeEvent,
   OrderStatusResponse,
 } from '@/types/trading';
+import {
+  TRADING_ENGINE_SNAPSHOT_VERSION,
+  type TradingEngineSnapshot,
+  type TradingPersistence,
+} from './trading-persistence';
 
 type EventHandler = (event: TradeEvent) => void;
 
@@ -59,18 +64,135 @@ export class TradingEngine {
   
   // Client order index for O(1) lookup of orders by clientId
   private clientOrderIndex: Map<string, Set<string>> = new Map();
+
+  // Optional persistence backend. When set, every state mutation is followed
+  // by a snapshot so the order book, order history and trade tape survive a
+  // restart. Null (the default) keeps the engine purely in-memory, which is
+  // what unit tests want.
+  private persistence: TradingPersistence | null = null;
   
   // Periodic cleanup timer for expired rate limit entries (prevents unbounded
   // Map growth in long-running processes).
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor() {
+  /**
+   * @param persistence - Optional persistence backend. Pass a backend (or
+   *   `null` to stay in-memory). When omitted, the engine restores from and
+   *   saves to whatever backend is configured via `TRADING_PERSISTENCE` /
+   *   `TRADING_STATE_PATH` (file-based by default when wired through
+   *   `getTradingEngine`); direct construction defaults to in-memory so unit
+   *   tests do not touch the filesystem.
+   */
+  constructor(persistence?: TradingPersistence | null) {
     // Clean up expired rate limit entries periodically so long-running
     // processes do not retain stale client/IP rate limit state forever.
     this.cleanupTimer = setInterval(() => {
       this.cleanupExpiredRateLimitEntries();
     }, 60_000);
     this.cleanupTimer.unref?.();
+
+    this.persistence = persistence ?? null;
+    this.restoreFromSnapshot();
+  }
+
+  /** Capture the full engine state as a serializable snapshot. */
+  private buildSnapshot(): TradingEngineSnapshot {
+    return {
+      version: TRADING_ENGINE_SNAPSHOT_VERSION,
+      savedAt: Date.now(),
+      orders: Array.from(this.orders.values()),
+      fills: Object.fromEntries(
+        Array.from(this.fills.entries()).map(([orderId, fills]) => [orderId, [...fills]]),
+      ),
+      trades: Object.fromEntries(
+        Array.from(this.trades.entries()).map(([pair, trades]) => [pair, [...trades]]),
+      ),
+    };
+  }
+
+  /** Persist the current state. Failures are logged, never thrown. */
+  private snapshotNow(): void {
+    if (!this.persistence) {
+      return;
+    }
+    try {
+      const result = this.persistence.save(this.buildSnapshot());
+      if (result && typeof (result as Promise<void>).catch === 'function') {
+        (result as Promise<void>).catch((error) => {
+          console.error('[trading-engine] persistence save failed:', error);
+        });
+      }
+    } catch (error) {
+      console.error('[trading-engine] persistence save failed:', error);
+    }
+  }
+
+  /**
+   * Rebuild in-memory state from the persisted snapshot.
+   *
+   * The order book is not serialized directly; it is derived from the resting
+   * orders, so restoring the orders and re-inserting the open/partial_fill
+   * ones reproduces the book exactly as it was. No events are emitted during
+   * a restore.
+   */
+  private restoreFromSnapshot(): void {
+    if (!this.persistence) {
+      return;
+    }
+
+    let snapshot: TradingEngineSnapshot | null = null;
+    try {
+      snapshot = this.persistence.load();
+    } catch (error) {
+      console.error('[trading-engine] failed to load persisted state; starting empty:', error);
+      return;
+    }
+    if (!snapshot) {
+      return;
+    }
+
+    this.orders = new Map(snapshot.orders.map((order) => [order.id, order]));
+    this.fills = new Map(
+      Object.entries(snapshot.fills ?? {}).map(([orderId, fills]) => [orderId, [...fills]]),
+    );
+    for (const order of this.orders.values()) {
+      if (!this.fills.has(order.id)) {
+        this.fills.set(order.id, []);
+      }
+    }
+    this.trades = new Map(
+      Object.entries(snapshot.trades ?? {}).map(([pair, trades]) => [pair, [...trades]]),
+    );
+
+    // Rebuild the client order index from the restored orders. Cancelled
+    // orders are excluded because cancelOrder drops them from the index at
+    // runtime; filled and resting orders stay indexed, matching live behavior.
+    this.clientOrderIndex = new Map();
+    for (const order of this.orders.values()) {
+      if (!order.clientId || order.status === 'cancelled') {
+        continue;
+      }
+      if (!this.clientOrderIndex.has(order.clientId)) {
+        this.clientOrderIndex.set(order.clientId, new Set());
+      }
+      this.clientOrderIndex.get(order.clientId)!.add(order.id);
+    }
+
+    // Rebuild the resting order books from open / partially filled limit
+    // orders. Filled, cancelled and pending orders have nothing on the book.
+    this.orderBooks = new Map();
+    const resting = Array.from(this.orders.values()).filter(
+      (order) =>
+        (order.status === 'open' || order.status === 'partial_fill') &&
+        order.remaining > 0 &&
+        order.type === 'limit',
+    );
+    // Re-insert in timestamp order so price-priority ties keep their original
+    // sequence as closely as the price-ordered insert allows.
+    resting.sort((a, b) => a.timestamp - b.timestamp);
+    for (const order of resting) {
+      this.addToOrderBook(order);
+    }
   }
 
   onEvent(handler: EventHandler): void {
@@ -262,6 +384,7 @@ export class TradingEngine {
     });
 
     this.matchOrder(order);
+    this.snapshotNow();
 
     return order;
   }
@@ -347,6 +470,8 @@ export class TradingEngine {
       this.matchOrder(order);
       results.push(order);
     }
+
+    this.snapshotNow();
 
     return results;
   }
@@ -571,6 +696,8 @@ export class TradingEngine {
       remaining: 0,
       timestamp: Date.now(),
     });
+
+    this.snapshotNow();
 
     return true;
   }
