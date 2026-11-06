@@ -274,12 +274,15 @@ export function OrderEntry({
 
         {/* Percentage Buttons */}
         <div className="flex justify-between gap-2" role="group" aria-label="Percentage of available balance">
+          <span id="order-entry-percentage-description" className="sr-only">
+            Set the order size to this percentage of your available balance for the current side
+          </span>
           {[0.25, 0.5, 0.75, 1].map(pct => (
             <button
               key={pct}
               type="button"
               onClick={() => handlePercentage(pct)}
-              aria-label={`Set size to ${pct * 100}% of available balance`}
+              aria-describedby="order-entry-percentage-description"
               className="flex-1 py-1 bg-muted/20 hover:bg-muted/40 rounded text-xs text-muted-foreground transition-colors"
             >
               {pct * 100}%
