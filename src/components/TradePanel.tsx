@@ -66,13 +66,29 @@ export function TradePanel({ asset }: { asset: Asset }) {
   return (
     <form
       onSubmit={handleSubmit}
+      aria-label={`Trade ${asset.code}`}
       className="rounded-xl border border-brand-muted/20 p-5"
     >
-      <div className="mb-4 grid grid-cols-2 overflow-hidden rounded-lg border border-brand-muted/20">
+      <h2 className="sr-only">Trade {asset.code}</h2>
+      <div
+        className="mb-4 grid grid-cols-2 overflow-hidden rounded-lg border border-brand-muted/20"
+        role="group"
+        aria-label="Order side"
+      >
         {(["buy", "sell"] as const).map((option) => (
           <button
             key={option}
             type="button"
+            aria-pressed={side === option}
+            tabIndex={side === option ? 0 : -1}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+              event.preventDefault();
+              const next = option === "buy" ? "sell" : "buy";
+              setSide(next);
+              const buttons = event.currentTarget.parentElement?.querySelectorAll("button");
+              buttons?.[next === "buy" ? 0 : 1]?.focus();
+            }}
             onClick={() => setSide(option)}
             className={`py-2 text-sm font-medium capitalize transition ${
               side === option
@@ -85,15 +101,17 @@ export function TradePanel({ asset }: { asset: Asset }) {
         ))}
       </div>
 
-      <label className="block text-sm font-medium text-brand-muted">
+      <label className="block text-sm font-medium text-brand-muted" htmlFor="trade-amount-input">
         Amount ({asset.code})
         <input
+          id="trade-amount-input"
           type="number"
           min="0"
           step="any"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="0.00"
+          aria-describedby="trade-estimated-total"
           className="mt-1 w-full rounded-lg border border-brand-muted/30 bg-transparent px-3 py-2 outline-none focus:border-brand-accent"
         />
       </label>
@@ -102,7 +120,11 @@ export function TradePanel({ asset }: { asset: Asset }) {
         <span>Price (XLM)</span>
         <span className="font-medium text-brand">{asset.price}</span>
       </div>
-      <div className="mt-1 flex justify-between text-sm text-brand-muted">
+      <div
+        className="mt-1 flex justify-between text-sm text-brand-muted"
+        id="trade-estimated-total"
+        aria-live="polite"
+      >
         <span>Estimated total</span>
         <span className="font-medium text-brand">{formatCurrency(total)}</span>
       </div>
@@ -122,7 +144,11 @@ export function TradePanel({ asset }: { asset: Asset }) {
       </button>
 
       {status.kind === "success" && (
-        <p className="mt-3 text-center text-sm text-green-600 dark:text-green-400">
+        <p
+          className="mt-3 text-center text-sm text-green-600 dark:text-green-400"
+          role="status"
+          aria-live="polite"
+        >
           Order placed on Stellar.{" "}
           <a
             href={status.explorerUrl}
@@ -135,7 +161,10 @@ export function TradePanel({ asset }: { asset: Asset }) {
         </p>
       )}
       {status.kind === "error" && (
-        <p className="mt-3 text-center text-sm text-red-600 dark:text-red-400">
+        <p
+          className="mt-3 text-center text-sm text-red-600 dark:text-red-400"
+          role="alert"
+        >
           {status.message}
         </p>
       )}

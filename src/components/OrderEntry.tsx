@@ -1,7 +1,33 @@
 "use client";
 
 import { useState } from "react";
+import type { KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
+
+const ORDER_TYPE_OPTIONS = ["limit", "market"] as const;
+const SIDE_OPTIONS = ["buy", "sell"] as const;
+
+/**
+ * Arrow-key navigation for the mutually-exclusive toggle button groups in
+ * this panel (roving tabindex): left/right move selection and focus together,
+ * so the whole row is reachable from the keyboard without tabbing through
+ * every option.
+ */
+function rovingKeyDown<T extends string>(
+  options: readonly T[],
+  index: number,
+  onSelect: (next: T) => void,
+) {
+  return (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const delta = event.key === "ArrowRight" ? 1 : -1;
+    const nextIndex = (index + delta + options.length) % options.length;
+    onSelect(options[nextIndex]);
+    const siblings = event.currentTarget.parentElement?.querySelectorAll("button");
+    siblings?.[nextIndex]?.focus();
+  };
+}
 
 export function OrderEntry({
   currentPrice,
@@ -112,12 +138,12 @@ export function OrderEntry({
   return (
     <div className="flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden" data-testid="order-entry">
       <div className="px-4 py-3 border-b border-border bg-muted/20">
-        <h3 className="font-semibold text-sm tracking-wide text-foreground" data-testid="order-entry-title">Order Entry</h3>
+        <h2 className="font-semibold text-sm tracking-wide text-foreground" data-testid="order-entry-title">Order Entry</h2>
       </div>
-      
-      <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4 flex-1">
+       
+      <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4 flex-1" aria-label="Order entry">
         {/* Order Type Tabs */}
-        <div className="flex bg-muted/30 rounded-lg p-1">
+        <div className="flex bg-muted/30 rounded-lg p-1" role="group" aria-label="Order type">
           <button
             type="button"
             className={cn(
@@ -125,6 +151,9 @@ export function OrderEntry({
               orderType === "limit" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             )}
             onClick={() => handleOrderTypeChange("limit")}
+            onKeyDown={rovingKeyDown(ORDER_TYPE_OPTIONS, 0, handleOrderTypeChange)}
+            aria-pressed={orderType === "limit"}
+            tabIndex={orderType === "limit" ? 0 : -1}
             data-testid="order-type-limit"
           >
             Limit
@@ -136,6 +165,9 @@ export function OrderEntry({
               orderType === "market" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             )}
             onClick={() => handleOrderTypeChange("market")}
+            onKeyDown={rovingKeyDown(ORDER_TYPE_OPTIONS, 1, handleOrderTypeChange)}
+            aria-pressed={orderType === "market"}
+            tabIndex={orderType === "market" ? 0 : -1}
             data-testid="order-type-market"
           >
             Market
@@ -153,7 +185,7 @@ export function OrderEntry({
         )}
 
         {/* Side Tabs */}
-        <div className="flex gap-2">
+        <div className="flex gap-2" role="group" aria-label="Order side">
           <button
             type="button"
             className={cn(
@@ -163,6 +195,9 @@ export function OrderEntry({
                 : "bg-muted/10 text-muted-foreground border-transparent hover:bg-muted/30"
             )}
             onClick={() => setSide("buy")}
+            onKeyDown={rovingKeyDown(SIDE_OPTIONS, 0, setSide)}
+            aria-pressed={side === "buy"}
+            tabIndex={side === "buy" ? 0 : -1}
             data-testid="side-buy"
           >
             Buy
@@ -176,6 +211,9 @@ export function OrderEntry({
                 : "bg-muted/10 text-muted-foreground border-transparent hover:bg-muted/30"
             )}
             onClick={() => setSide("sell")}
+            onKeyDown={rovingKeyDown(SIDE_OPTIONS, 1, setSide)}
+            aria-pressed={side === "sell"}
+            tabIndex={side === "sell" ? 0 : -1}
             data-testid="side-sell"
           >
             Sell
@@ -235,12 +273,16 @@ export function OrderEntry({
         </div>
 
         {/* Percentage Buttons */}
-        <div className="flex justify-between gap-2">
+        <div className="flex justify-between gap-2" role="group" aria-label="Percentage of available balance">
+          <span id="order-entry-percentage-description" className="sr-only">
+            Set the order size to this percentage of your available balance for the current side
+          </span>
           {[0.25, 0.5, 0.75, 1].map(pct => (
             <button
               key={pct}
               type="button"
               onClick={() => handlePercentage(pct)}
+              aria-describedby="order-entry-percentage-description"
               className="flex-1 py-1 bg-muted/20 hover:bg-muted/40 rounded text-xs text-muted-foreground transition-colors"
             >
               {pct * 100}%
@@ -249,7 +291,7 @@ export function OrderEntry({
         </div>
 
         {/* Available account balance for the active side */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-center justify-between text-xs text-muted-foreground" aria-live="polite">
           <span>Available</span>
           <span data-testid="available-balance" className="font-mono text-foreground">
             {availableLabel}
@@ -257,7 +299,7 @@ export function OrderEntry({
         </div>
 
         {/* Order value at the price this order will trade at */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-center justify-between text-xs text-muted-foreground" aria-live="polite">
           <span>Order value</span>
           <span data-testid="order-value" className="font-mono text-foreground">
             {orderValue === null ? "--" : orderValue.toFixed(2)}

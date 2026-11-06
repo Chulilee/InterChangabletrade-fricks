@@ -17,33 +17,117 @@ import { submitTransaction } from "./horizon";
 
 type KitModule = typeof import("@creit.tech/stellar-wallets-kit");
 
+/** Default maximum attempts for one kit initialization (initial try + 2 retries). */
+export const DEFAULT_KIT_INIT_ATTEMPTS = 3;
+/** Default initial backoff delay in milliseconds; doubles per attempt. */
+export const DEFAULT_KIT_INIT_BASE_DELAY_MS = 250;
+
+/** Error thrown when the kit cannot be initialized after every attempt. */
+export class WalletInitializationError extends Error {
+  /** The underlying failure from the final attempt. */
+  readonly cause: unknown;
+  /** How many attempts were made. */
+  readonly attempts: number;
+
+  constructor(message: string, options: { cause: unknown; attempts: number }) {
+    super(message);
+    this.name = "WalletInitializationError";
+    this.cause = options.cause;
+    this.attempts = options.attempts;
+  }
+}
+
+export interface WalletKitInitOptions {
+  /** Total attempts before surfacing; minimum 1. Defaults to {@link DEFAULT_KIT_INIT_ATTEMPTS}. */
+  attempts?: number;
+  /** Initial backoff delay; doubles after every failed attempt. Defaults to {@link DEFAULT_KIT_INIT_BASE_DELAY_MS}. */
+  baseDelayMs?: number;
+  /** Injectable sleep for tests. */
+  sleep?: (ms: number) => Promise<void>;
+}
+
+const defaultSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+function causeMessage(cause: unknown): string {
+  if (cause instanceof Error) return cause.message;
+  return String(cause ?? "unknown error");
+}
+
+/**
+ * Runs `operation` with exponential backoff between attempts and converts the
+ * terminal failure into a descriptive {@link WalletInitializationError}.
+ */
+export async function retryWithBackoff<T>(
+  operation: () => Promise<T>,
+  options: WalletKitInitOptions = {},
+): Promise<T> {
+  const attempts = Math.max(1, Math.floor(options.attempts ?? DEFAULT_KIT_INIT_ATTEMPTS));
+  const baseDelayMs = Math.max(0, options.baseDelayMs ?? DEFAULT_KIT_INIT_BASE_DELAY_MS);
+  const sleep = options.sleep ?? defaultSleep;
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts - 1) {
+        await sleep(baseDelayMs * 2 ** attempt);
+      }
+    }
+  }
+
+  throw new WalletInitializationError(
+    `Failed to initialize the Stellar wallets kit after ${attempts} attempt(s): ${causeMessage(lastError)}`,
+    { cause: lastError, attempts },
+  );
+}
+
+async function loadKit(): Promise<KitModule["StellarWalletsKit"]> {
+  const [{ StellarWalletsKit, Networks }, freighter, xbull, albedo] =
+    await Promise.all([
+      import("@creit.tech/stellar-wallets-kit"),
+      import("@creit.tech/stellar-wallets-kit/modules/freighter"),
+      import("@creit.tech/stellar-wallets-kit/modules/xbull"),
+      import("@creit.tech/stellar-wallets-kit/modules/albedo"),
+    ]);
+
+  StellarWalletsKit.init({
+    network:
+      stellarConfig.network === "public"
+        ? Networks.PUBLIC
+        : Networks.TESTNET,
+    modules: [
+      new freighter.FreighterModule(),
+      new xbull.xBullModule(),
+      new albedo.AlbedoModule(),
+    ],
+  });
+
+  return StellarWalletsKit;
+}
+
 let kitPromise: Promise<KitModule["StellarWalletsKit"]> | null = null;
 
-async function getKit() {
+/**
+ * Returns the initialized kit, initializing it on first call.
+ *
+ * The result is cached, but a *failed* initialization is never cached: the
+ * rejected promise resets the cache before rejecting, so the next call
+ * retries from scratch. Initialization itself is retried with exponential
+ * backoff via {@link retryWithBackoff}, and failures surface as
+ * {@link WalletInitializationError} with the underlying cause attached.
+ */
+export async function getKit(
+  options?: WalletKitInitOptions,
+): Promise<KitModule["StellarWalletsKit"]> {
   if (!kitPromise) {
-    kitPromise = (async () => {
-      const [{ StellarWalletsKit, Networks }, freighter, xbull, albedo] =
-        await Promise.all([
-          import("@creit.tech/stellar-wallets-kit"),
-          import("@creit.tech/stellar-wallets-kit/modules/freighter"),
-          import("@creit.tech/stellar-wallets-kit/modules/xbull"),
-          import("@creit.tech/stellar-wallets-kit/modules/albedo"),
-        ]);
-
-      StellarWalletsKit.init({
-        network:
-          stellarConfig.network === "public"
-            ? Networks.PUBLIC
-            : Networks.TESTNET,
-        modules: [
-          new freighter.FreighterModule(),
-          new xbull.xBullModule(),
-          new albedo.AlbedoModule(),
-        ],
-      });
-
-      return StellarWalletsKit;
-    })();
+    kitPromise = retryWithBackoff(loadKit, options).catch((error) => {
+      // Do not cache the failure: the next call must be able to retry.
+      kitPromise = null;
+      throw error;
+    });
   }
   return kitPromise;
 }
