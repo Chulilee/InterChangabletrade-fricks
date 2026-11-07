@@ -73,6 +73,9 @@ export async function getNativeBalance(publicKey: string): Promise<string> {
  * already exists is treated as success.
  */
 export async function fundWithFriendbot(publicKey: string): Promise<void> {
+  if (stellarConfig.network !== "testnet" || !stellarConfig.friendbotUrl) {
+    throw new FriendbotError({ code: "unsupported_network" });
+  }
   await fundAccountWithFriendbot(publicKey, {
     friendbotUrl: stellarConfig.friendbotUrl,
   });
