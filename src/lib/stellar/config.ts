@@ -40,7 +40,17 @@ const BASE: Record<StellarNetwork, StellarConfig> = {
 
 function resolveNetwork(): StellarNetwork {
   const raw = (process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? "testnet").toLowerCase();
-  return raw === "public" || raw === "mainnet" ? "public" : "testnet";
+
+  if (raw === "public" || raw === "mainnet") {
+    return "public";
+  }
+  if (raw === "testnet") {
+    return "testnet";
+  }
+
+  throw new Error(
+    `Invalid NEXT_PUBLIC_STELLAR_NETWORK value: "${raw}". Must be "testnet" or "public".`,
+  );
 }
 
 const network = resolveNetwork();

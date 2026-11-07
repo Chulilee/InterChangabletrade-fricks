@@ -69,6 +69,12 @@ export class InternalMatchingEngineAdapter implements VenueAdapter {
     return { success: true };
   }
 
+  async rollbackOrder(leg: RoutingPlanLeg): Promise<{ success: boolean; error?: string }> {
+    // For internal matching engine, rollback means cancelling the order
+    const orderId = leg.destination.orderId;
+    return this.cancelOrder(orderId);
+  }
+
   async getStatus(orderId: string): Promise<{
     success: boolean;
     status?: Order['status'];

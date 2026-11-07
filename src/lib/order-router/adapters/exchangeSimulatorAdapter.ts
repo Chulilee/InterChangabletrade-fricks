@@ -358,6 +358,33 @@ export class ExchangeSimulatorAdapter implements VenueAdapter {
     };
   }
 
+  async rollbackOrder(leg: RoutingPlanLeg): Promise<{ success: boolean; error?: string }> {
+    const orderId = leg.destination.orderId || `${leg.destination.venueId}_ord_${Date.now()}`;
+    const simOrder = this.orders.get(orderId);
+
+    if (!simOrder) {
+      // Order not found in simulator, consider it already rolled back
+      return { success: true };
+    }
+
+    // Cancel the order by marking it as cancelled and clearing timers
+    simOrder.status = 'cancelled';
+
+    const timer = this.fillTimers.get(orderId);
+    if (timer) {
+      clearTimeout(timer);
+      this.fillTimers.delete(orderId);
+    }
+
+    this.orders.set(orderId, simOrder);
+
+    // Also remove from idempotency cache if present
+    const idempotencyKey = `${simOrder.idempotencyKey}`;
+    this.idempotencyCache.delete(idempotencyKey);
+
+    return { success: true };
+  }
+
   /**
    * Cleanup method to clear all timers
    */
