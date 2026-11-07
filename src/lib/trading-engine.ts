@@ -204,7 +204,26 @@ export class TradingEngine {
   }
 
   private emit(event: TradeEvent): void {
-    this.eventHandlers.forEach((handler) => handler(event));
+    this.eventHandlers.forEach((handler, index) => {
+      try {
+        const result = handler(event) as unknown;
+        if (result && typeof (result as Promise<unknown>).then === "function") {
+          void (result as Promise<unknown>).catch((error) => {
+            console.error("[trading-engine] async event handler failed", {
+              eventType: event.type,
+              handlerIndex: index,
+              error,
+            });
+          });
+        }
+      } catch (error) {
+        console.error("[trading-engine] event handler failed", {
+          eventType: event.type,
+          handlerIndex: index,
+          error,
+        });
+      }
+    });
   }
 
   /**
