@@ -142,25 +142,62 @@ export class OrderRouter {
 
     const errors: string[] = [];
 
-    // Submit each leg to its respective venue
+    // Submit each leg to its respective venue, tracking successes for potential rollback
     const submissionPromises = planToExecute.legs.map(async (leg) => {
       try {
-        return await this.submitLeg(planToExecute, leg);
+        const result = await this.submitLeg(planToExecute, leg);
+        leg.status = 'submitted';
+        leg.error = undefined;
+        return { success: result.success, error: result.error, leg };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         errors.push(`Leg ${leg.legId}: ${errorMessage}`);
         leg.status = 'failed';
         leg.error = errorMessage;
-        return { success: false, error: errorMessage };
+        return { success: false, error: errorMessage, leg };
       }
     });
 
     const results = await Promise.allSettled(submissionPromises);
-    const allFailed = results.every(r => r.status === 'rejected' || (r.value && !r.value.success));
 
-    if (allFailed) {
+    const hasFailure = results.some(
+      (r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value?.success),
+    );
+    const hasSuccess = results.some(
+      (r) => r.status === 'fulfilled' && r.value?.success,
+    );
+    const successfulLegs = planToExecute.legs.filter(
+      (leg) => leg.status === 'submitted',
+    );
+
+    if (hasFailure && hasSuccess) {
+      if (!this.config.enableFailover) {
+        // Partial failure without failover: compensate by rolling back
+        // the legs that were successfully submitted, so the plan does
+        // not settle in an inconsistent state.
+        const rollbackPromises = successfulLegs.map(async (leg) => {
+          try {
+            return await this.rollbackLeg(planToExecute, leg);
+          } catch (rollbackError) {
+            const rollbackErrorMessage =
+              rollbackError instanceof Error ? rollbackError.message : 'Unknown rollback error';
+            errors.push(`Rollback leg ${leg.legId}: ${rollbackErrorMessage}`);
+            return { success: false, error: rollbackErrorMessage };
+          }
+        });
+
+        await Promise.allSettled(rollbackPromises);
+        planToExecute.status = 'failed';
+      } else {
+        // Failover enabled: keep the partial successes and let the
+        // reconciliation loop drive failover for the failed legs.
+        planToExecute.status = 'partial_complete';
+      }
+    } else if (!hasSuccess) {
+      // All legs failed
       planToExecute.status = 'failed';
-    } else if (results.some(r => r.status === 'fulfilled' && r.value?.success)) {
+    } else {
+      // All legs submitted successfully
       planToExecute.status = 'partial_complete';
     }
 
@@ -168,10 +205,29 @@ export class OrderRouter {
     this.plans.set(plan.planId, planToExecute);
 
     return {
-      success: !allFailed,
+      success: planToExecute.status !== 'failed',
       planId: plan.planId,
       errors: errors.length > 0 ? errors : undefined,
     };
+  }
+
+  /**
+   * Rollback a single leg that was previously submitted
+   */
+  private async rollbackLeg(plan: RoutingPlan, leg: RoutingPlanLeg): Promise<{ success: boolean; error?: string }> {
+    const adapter = this.adapters.get(leg.destination.venueId);
+    if (!adapter) {
+      throw new Error(`No adapter found for venue ${leg.destination.venueId}`);
+    }
+
+    // Check if venue is available for rollback
+    const isAvailable = await adapter.isAvailable();
+    if (!isAvailable) {
+      throw new Error(`Venue ${leg.destination.venueId} is unavailable for rollback`);
+    }
+
+    // Execute venue-specific rollback/ compensation
+    return await adapter.rollbackOrder(leg);
   }
 
   /**

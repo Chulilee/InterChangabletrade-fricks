@@ -117,3 +117,66 @@ export function createSuccessResponse(data: unknown, metadata?: Record<string, u
     },
   }, { status });
 }
+
+/**
+ * Market data cache TTL in seconds (configurable via env).
+ */
+export const MARKET_DATA_CACHE_TTL = (() => {
+  const parsed = Number(process.env.MARKET_DATA_CACHE_TTL);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 5;
+})();
+
+/**
+ * Cache-Control header value for market data endpoints.
+ */
+export function marketDataCacheControl(ttlSeconds: number = MARKET_DATA_CACHE_TTL): string {
+  const normalized = Number.isFinite(ttlSeconds) && ttlSeconds > 0 ? Math.floor(ttlSeconds) : 5;
+  return `private, max-age=${normalized}, stale-while-revalidate=${normalized}`;
+}
+
+/**
+ * Strong ETag generator (djb2 hash of the serialized payload).
+ */
+export function computeETag(payload: unknown): string {
+  const serialized = JSON.stringify(payload);
+  let hash = 5381;
+  for (let i = 0; i < serialized.length; i++) {
+    hash = ((hash << 5) + hash + serialized.charCodeAt(i)) >>> 0;
+  }
+  return `"${hash.toString(36)}"`;
+}
+
+/**
+ * Apply Cache-Control / ETag headers to a successful market data
+ * response. Returns a 304 Not Modified response when the client's
+ * If-None-Match matches the current ETag, otherwise the original
+ * response with cache headers attached.
+ */
+export function withMarketDataCacheHeaders(
+  response: NextResponse,
+  etag: string,
+  request?: NextRequest,
+  ttlSeconds: number = MARKET_DATA_CACHE_TTL,
+): NextResponse {
+  const cacheControl = marketDataCacheControl(ttlSeconds);
+
+  if (request) {
+    const ifNoneMatch = request.headers.get('if-none-match');
+    if (ifNoneMatch && ifNoneMatch.split(',').map((v) => v.trim()).includes(etag)) {
+      return new NextResponse(null, {
+        status: 304,
+        headers: {
+          'Cache-Control': cacheControl,
+          ETag: etag,
+          Vary: 'Authorization',
+        },
+      });
+    }
+  }
+
+  response.headers.set('Cache-Control', cacheControl);
+  response.headers.set('ETag', etag);
+  // Market data varies by API key, so shared caches must not reuse it.
+  response.headers.set('Vary', 'Authorization');
+  return response;
+}

@@ -104,6 +104,14 @@ export interface VenueAdapter {
    * Get the venue's ID
    */
   getVenueId(): string;
+
+  /**
+   * Rollback a previously submitted order on the venue
+   */
+  rollbackOrder(leg: RoutingPlanLeg): Promise<{
+    success: boolean;
+    error?: string;
+  }>;
 }
 
 /**
