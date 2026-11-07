@@ -1,5 +1,12 @@
 import { NextRequest } from 'next/server';
-import { validateApiKey, hasPermission, createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
+import {
+  validateApiKey,
+  hasPermission,
+  createErrorResponse,
+  createSuccessResponse,
+  computeETag,
+  withMarketDataCacheHeaders,
+} from '@/lib/api-middleware';
 import { getTradingEngine } from '@/lib/trading-instance';
 
 /**
@@ -111,8 +118,11 @@ export async function GET(
   const engine = getTradingEngine();
   const orderBook = engine.getOrderBook(pair, depth);
 
-  return createSuccessResponse(orderBook, { 
+  const etag = computeETag(orderBook);
+  const response = createSuccessResponse(orderBook, {
     apiVersion: 'v1',
-    depth: orderBook.bids.length + orderBook.asks.length
+    depth: orderBook.bids.length + orderBook.asks.length,
   });
+
+  return withMarketDataCacheHeaders(response, etag, request);
 }

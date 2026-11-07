@@ -112,6 +112,7 @@ export interface VenueAdapter {
     success: boolean;
     error?: string;
   }>;
+}
 
 /**
  * Router configuration

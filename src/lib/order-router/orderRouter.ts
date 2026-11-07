@@ -160,36 +160,45 @@ export class OrderRouter {
 
     const results = await Promise.allSettled(submissionPromises);
 
-    // Check if any legs succeeded (need rollback)
+    const hasFailure = results.some(
+      (r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value?.success),
+    );
+    const hasSuccess = results.some(
+      (r) => r.status === 'fulfilled' && r.value?.success,
+    );
     const successfulLegs = planToExecute.legs.filter(
       (leg) => leg.status === 'submitted',
     );
 
-    if (successfulLegs.length > 0) {
-      // Rollback successful legs since not all legs completed successfully
-      const rollbackPromises = successfulLegs.map(async (leg) => {
-        try {
-          return await this.rollbackLeg(planToExecute, leg);
-        } catch (rollbackError) {
-          const rollbackErrorMessage =
-            rollbackError instanceof Error ? rollbackError.message : 'Unknown rollback error';
-          errors.push(`Rollback leg ${leg.legId}: ${rollbackErrorMessage}`);
-          return { success: false, error: rollbackErrorMessage };
-        }
-      });
+    if (hasFailure && hasSuccess) {
+      if (!this.config.enableFailover) {
+        // Partial failure without failover: compensate by rolling back
+        // the legs that were successfully submitted, so the plan does
+        // not settle in an inconsistent state.
+        const rollbackPromises = successfulLegs.map(async (leg) => {
+          try {
+            return await this.rollbackLeg(planToExecute, leg);
+          } catch (rollbackError) {
+            const rollbackErrorMessage =
+              rollbackError instanceof Error ? rollbackError.message : 'Unknown rollback error';
+            errors.push(`Rollback leg ${leg.legId}: ${rollbackErrorMessage}`);
+            return { success: false, error: rollbackErrorMessage };
+          }
+        });
 
-      await Promise.allSettled(rollbackPromises);
-      planToExecute.status = 'failed';
-    } else if (results.every(r => r.status === 'rejected')) {
+        await Promise.allSettled(rollbackPromises);
+        planToExecute.status = 'failed';
+      } else {
+        // Failover enabled: keep the partial successes and let the
+        // reconciliation loop drive failover for the failed legs.
+        planToExecute.status = 'partial_complete';
+      }
+    } else if (!hasSuccess) {
       // All legs failed
       planToExecute.status = 'failed';
-    } else if (results.some(r => r.status === 'fulfilled' && r.value?.success)) {
-      // Some legs succeeded and all failed (this shouldn't happen with the above logic,
-      // but keep for edge cases)
-      planToExecute.status = 'partial_complete';
     } else {
-      // Mixed success/failure handled by rollback above
-      planToExecute.status = 'failed';
+      // All legs submitted successfully
+      planToExecute.status = 'partial_complete';
     }
 
     planToExecute.updatedAt = Date.now();

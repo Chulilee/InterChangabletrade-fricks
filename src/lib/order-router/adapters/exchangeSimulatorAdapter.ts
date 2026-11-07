@@ -1,4 +1,4 @@
-import { VenueAdapter } from '../types';
+import { VenueAdapter, type RoutingPlanLeg } from '../types';
 import { Order, Fill, OrderStatus } from '@/types/trading';
 
 /**

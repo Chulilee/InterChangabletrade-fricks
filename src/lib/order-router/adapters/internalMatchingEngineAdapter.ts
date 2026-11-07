@@ -1,4 +1,4 @@
-import { VenueAdapter } from '../types';
+import { VenueAdapter, type RoutingPlanLeg } from '../types';
 import { TradingEngine } from '@/lib/trading-engine';
 import { Order, Fill } from '@/types/trading';
 
@@ -72,6 +72,9 @@ export class InternalMatchingEngineAdapter implements VenueAdapter {
   async rollbackOrder(leg: RoutingPlanLeg): Promise<{ success: boolean; error?: string }> {
     // For internal matching engine, rollback means cancelling the order
     const orderId = leg.destination.orderId;
+    if (!orderId) {
+      return { success: false, error: 'No order ID to rollback' };
+    }
     return this.cancelOrder(orderId);
   }
 
