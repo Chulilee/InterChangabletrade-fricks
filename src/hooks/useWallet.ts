@@ -14,6 +14,7 @@ import {
   fundWithFriendbot,
   getNativeBalance,
 } from "@/lib/stellar/horizon";
+import { stellarConfig } from "@/lib/stellar/config";
 
 const STORAGE_KEY = "ict.wallet.address";
 
@@ -114,6 +115,13 @@ export function useWallet(): WalletContextValue {
 
   const fund = useCallback(async () => {
     if (!state.address) return;
+    if (stellarConfig.network !== "testnet") {
+      setState((prev) => ({
+        ...prev,
+        error: "Funding only available on Testnet",
+      }));
+      return;
+    }
     setState((prev) => ({ ...prev, error: null }));
     try {
       await fundWithFriendbot(state.address);
