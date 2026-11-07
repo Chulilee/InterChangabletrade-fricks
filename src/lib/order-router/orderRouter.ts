@@ -167,7 +167,7 @@ export class OrderRouter {
 
     if (successfulLegs.length > 0) {
       // Rollback successful legs since not all legs completed successfully
-      const rollbackPromises = successfulLegs.map((leg) => {
+      const rollbackPromises = successfulLegs.map(async (leg) => {
         try {
           return await this.rollbackLeg(planToExecute, leg);
         } catch (rollbackError) {
