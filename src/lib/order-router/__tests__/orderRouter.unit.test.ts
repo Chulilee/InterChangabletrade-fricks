@@ -1,6 +1,7 @@
 import { OrderRouter } from '../orderRouter';
 import { ExchangeSimulatorAdapter } from '../adapters/exchangeSimulatorAdapter';
 import { InternalMatchingEngineAdapter } from '../adapters/internalMatchingEngineAdapter';
+import type { MatchingEngine } from '../types';
 import { TradingEngine } from '../../trading-engine';
 import { Order } from '@/types/trading';
 import { SplitEqualStrategy } from '../strategies/splitEqualStrategy';
@@ -93,6 +94,62 @@ describe('OrderRouter Unit Tests', () => {
 
       const legs = strategy.buildPlan(mockOrder, []);
       expect(legs).toHaveLength(0);
+    });
+  });
+
+  describe('InternalMatchingEngineAdapter', () => {
+    it('accepts a mock engine so the router can be tested in isolation', async () => {
+      const submitted: Array<Record<string, unknown>> = [];
+      const mockEngine: MatchingEngine = {
+        submitOrder: (params) => {
+          submitted.push(params);
+          return {
+            id: 'ord_mock_1',
+            pair: params.pair,
+            side: params.side,
+            type: params.type,
+            price: params.price,
+            quantity: params.quantity,
+            filled: 0,
+            remaining: params.quantity,
+            status: 'open',
+            clientId: params.clientId,
+            timestamp: 1,
+          };
+        },
+        cancelOrder: () => true,
+        getOrderStatus: (orderId) => ({
+          orderId,
+          status: 'open',
+          filled: 0,
+          remaining: 10,
+          fills: [],
+        }),
+      };
+
+      const adapter = new InternalMatchingEngineAdapter(mockEngine, 'internal_mock');
+
+      expect(await adapter.isAvailable()).toBe(true);
+      expect(adapter.getVenueId()).toBe('internal_mock');
+
+      const result = await adapter.sendOrder(
+        {
+          pair: 'BTC/USD',
+          side: 'buy',
+          type: 'limit',
+          price: 50_000,
+          quantity: 10,
+          clientId: 'test',
+        },
+        'idem_mock_1',
+      );
+
+      expect(result).toEqual({ success: true, orderId: 'ord_mock_1' });
+      expect(submitted).toHaveLength(1);
+
+      const status = await adapter.getStatus('ord_mock_1');
+      expect(status.success).toBe(true);
+      expect(status.status).toBe('open');
     });
   });
 
