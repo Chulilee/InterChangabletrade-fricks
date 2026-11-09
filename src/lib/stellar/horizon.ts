@@ -14,8 +14,46 @@ export type { Balance };
 export { FriendbotError };
 export type { FriendbotErrorCode } from "./friendbot";
 
-/** Shared Horizon client pointed at the configured network. */
-export const horizon = new Horizon.Server(stellarConfig.horizonUrl);
+/**
+ * Shared Horizon client.
+ *
+ * `stellarConfig` is resolved once at module load (see `./config.ts`) and is
+ * therefore static for the lifetime of the process. Nevertheless, the client
+ * is recreated on demand whenever `stellarConfig.horizonUrl` changes, so
+ * tests (or future hot-reload / dynamic config) never keep a stale endpoint.
+ * `resetHorizonClient()` clears the cache explicitly.
+ */
+let cachedClient: Horizon.Server | null = null;
+let cachedUrl: string | null = null;
+
+/** Returns the Horizon client for the current `stellarConfig.horizonUrl`. */
+export function getHorizonClient(): Horizon.Server {
+  const currentUrl = stellarConfig.horizonUrl;
+  if (!cachedClient || cachedUrl !== currentUrl) {
+    cachedClient = new Horizon.Server(currentUrl);
+    cachedUrl = currentUrl;
+  }
+  return cachedClient;
+}
+
+/** Clears the cached Horizon client (for tests / config reloads). */
+export function resetHorizonClient(): void {
+  cachedClient = null;
+  cachedUrl = null;
+}
+
+/**
+ * Backwards-compatible named export. Delegates to {@link getHorizonClient}
+ * on every property access so stale clients are never observed.
+ * @deprecated Use `getHorizonClient()` directly.
+ */
+export const horizon: Horizon.Server = new Proxy({} as Horizon.Server, {
+  get(_target, prop) {
+    const client = getHorizonClient() as unknown as Record<string | symbol, unknown>;
+    const value = client[prop];
+    return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(client) : value;
+  },
+});
 
 /** A trading asset expressed as code/issuer. Native XLM has a null issuer. */
 export interface AssetRef {
@@ -38,7 +76,7 @@ export function isNative(ref: AssetRef): boolean {
 /** True when Horizon has no record of the account (needs funding). */
 export async function accountExists(publicKey: string): Promise<boolean> {
   try {
-    await horizon.loadAccount(publicKey);
+    await getHorizonClient().loadAccount(publicKey);
     return true;
   } catch (err) {
     if (err instanceof NotFoundError) {
@@ -58,7 +96,7 @@ export async function accountExists(publicKey: string): Promise<boolean> {
  * trustline balances and callers can match on `code` and `issuer` directly.
  */
 export async function getBalances(publicKey: string): Promise<Balance[]> {
-  const account = await horizon.loadAccount(publicKey);
+  const account = await getHorizonClient().loadAccount(publicKey);
   return toBalances(account.balances);
 }
 
@@ -85,5 +123,5 @@ export async function fundWithFriendbot(publicKey: string): Promise<void> {
 export async function submitTransaction(
   tx: Transaction | FeeBumpTransaction,
 ): Promise<Horizon.HorizonApi.SubmitTransactionResponse> {
-  return horizon.submitTransaction(tx);
+  return getHorizonClient().submitTransaction(tx);
 }
