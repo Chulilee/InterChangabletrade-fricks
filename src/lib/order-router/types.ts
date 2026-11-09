@@ -1,4 +1,26 @@
-import { Order, Fill, OrderStatus } from '@/types/trading';
+import { Order, Fill, OrderStatus, OrderStatusResponse } from '@/types/trading';
+
+/**
+ * Minimal matching-engine contract used by order-router adapters.
+ *
+ * Adapters depend on this interface (not a concrete engine) so routers can be
+ * tested with mocks and engines can be swapped without changing routing code.
+ */
+export interface MatchingEngine {
+  submitOrder(params: {
+    pair: string;
+    side: Order['side'];
+    type: Order['type'];
+    price: number;
+    quantity: number;
+    clientId: string;
+    clientIp?: string;
+  }): Order | null;
+
+  cancelOrder(orderId: string): boolean;
+
+  getOrderStatus(orderId: string): OrderStatusResponse | null;
+}
 
 /**
  * Venue types - where orders can be routed
