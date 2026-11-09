@@ -155,6 +155,8 @@ export async function checkOrderBalance(input: PlaceOrderInput): Promise<{
   /** Shortfall if insufficient */
   shortfall?: number;
   fees: FeeEstimate;
+  /** Balances used for the decision (lets callers avoid a second fetch). */
+  balances: Awaited<ReturnType<typeof getBalances>>;
 }> {
   const { address, side } = input;
   
@@ -172,6 +174,7 @@ export async function checkOrderBalance(input: PlaceOrderInput): Promise<{
       requiredXlm: estimate.totalXlmNeeded,
       shortfall: sufficient ? undefined : estimate.totalXlmNeeded - availableXlm,
       fees: estimate.fees,
+      balances,
     };
   } else {
     // For sell orders, check if we have the asset to sell + XLM for fees
@@ -192,6 +195,7 @@ export async function checkOrderBalance(input: PlaceOrderInput): Promise<{
         estimate.totalXlmNeeded - availableXlm
       ),
       fees: estimate.fees,
+      balances,
     };
   }
 }
@@ -208,25 +212,60 @@ export async function checkOrderBalance(input: PlaceOrderInput): Promise<{
 export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
   const { asset, side, amount, price, address } = input;
 
+  // Validate order params before any network call.
+  if (!(amount > 0) || !Number.isFinite(amount)) {
+    throw new Error(`Order amount must be a positive number, got ${amount}`);
+  }
+  if (!(price > 0) || !Number.isFinite(price)) {
+    throw new Error(`Order price must be a positive number, got ${price}`);
+  }
+  if (!address || typeof address !== "string" || address.trim() === "") {
+    throw new Error("A connected wallet address is required to place an order");
+  }
+
   if (!(await accountExists(address))) {
     throw new Error(
       "This account isn't funded on the network yet. Fund it, then try again.",
     );
   }
 
-  // Estimate fees and check balance before proceeding
+  // Pre-flight balance checks: no trustline/offer transactions are built
+  // or signed if the order cannot possibly succeed.
   const balanceCheck = await checkOrderBalance(input);
   if (!balanceCheck.sufficient) {
-    const shortfall = balanceCheck.shortfall?.toFixed(7) ?? "unknown";
-    throw new Error(
-      `Insufficient balance for order. Need ${balanceCheck.requiredXlm.toFixed(7)} XLM ` +
-      `(${balanceCheck.fees.totalFeeXlm.toFixed(7)} XLM for fees), have ${balanceCheck.availableXlm.toFixed(7)} XLM. ` +
-      `Shortfall: ${shortfall} XLM.`
+    if (side === "buy") {
+      throw new Error(
+        `Insufficient XLM balance to buy: need ${balanceCheck.requiredXlm.toFixed(7)} XLM ` +
+        `(${balanceCheck.fees.totalFeeXlm.toFixed(7)} XLM for fees), have ` +
+        `${balanceCheck.availableXlm.toFixed(7)} XLM. Shortfall: ` +
+        `${(balanceCheck.shortfall ?? 0).toFixed(7)} XLM.`,
+      );
+    }
+    const baseForMsg: AssetRef = { code: asset.code, issuer: asset.issuer };
+    const assetBalance = balanceCheck.balances.find(
+      (b) => b.code === baseForMsg.code && b.issuer === baseForMsg.issuer,
     );
+    const availableAsset = parseFloat(assetBalance?.balance ?? "0");
+    const assetShortfall = Math.max(0, amount - availableAsset);
+    const xlmShortfall = Math.max(0, balanceCheck.requiredXlm - balanceCheck.availableXlm);
+    const reasons: string[] = [];
+    if (assetShortfall > 0) {
+      reasons.push(
+        `need ${amount} ${baseForMsg.code}, have ${availableAsset.toFixed(7)} ` +
+        `(shortfall ${assetShortfall.toFixed(7)} ${baseForMsg.code})`,
+      );
+    }
+    if (xlmShortfall > 0) {
+      reasons.push(
+        `need ${balanceCheck.requiredXlm.toFixed(7)} XLM for fees, have ` +
+        `${balanceCheck.availableXlm.toFixed(7)} XLM (shortfall ${xlmShortfall.toFixed(7)} XLM)`,
+      );
+    }
+    throw new Error(`Insufficient balance to sell: ${reasons.join("; ")}.`);
   }
 
   const base: AssetRef = { code: asset.code, issuer: asset.issuer };
-  const balances = await getBalances(address);
+  const balances = balanceCheck.balances;
 
   let trustlineHash: string | undefined;
   let trustlineCreated = false;
