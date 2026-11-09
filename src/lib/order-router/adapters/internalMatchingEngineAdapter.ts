@@ -1,20 +1,22 @@
-import { VenueAdapter, type RoutingPlanLeg } from '../types';
-import { TradingEngine } from '@/lib/trading-engine';
+import { VenueAdapter, type MatchingEngine, type RoutingPlanLeg } from '../types';
 import { Order, Fill } from '@/types/trading';
 
 /**
- * Adapter for the internal matching engine
+ * Adapter for the internal matching engine.
+ *
+ * Accepts any {@link MatchingEngine} implementation so the router can be wired
+ * to the real engine in production and to a mock in unit tests.
  */
 export class InternalMatchingEngineAdapter implements VenueAdapter {
-  private tradingEngine: TradingEngine;
+  private matchingEngine: MatchingEngine;
   private venueId: string;
   private idempotencyCache: Map<
     string,
     { orderId: string; result: { success: boolean; orderId?: string; error?: string } }
   > = new Map();
 
-  constructor(tradingEngine: TradingEngine, venueId: string = 'internal_engine') {
-    this.tradingEngine = tradingEngine;
+  constructor(matchingEngine: MatchingEngine, venueId: string = 'internal_engine') {
+    this.matchingEngine = matchingEngine;
     this.venueId = venueId;
   }
 
@@ -38,8 +40,8 @@ export class InternalMatchingEngineAdapter implements VenueAdapter {
     }
 
     try {
-      const result = this.tradingEngine.submitOrder(order);
-      
+      const result = this.matchingEngine.submitOrder(order);
+
       if (!result) {
         return { success: false, error: 'Internal engine rejected order' };
       }
@@ -62,7 +64,7 @@ export class InternalMatchingEngineAdapter implements VenueAdapter {
   }
 
   async cancelOrder(orderId: string): Promise<{ success: boolean; error?: string }> {
-    const cancelled = this.tradingEngine.cancelOrder(orderId);
+    const cancelled = this.matchingEngine.cancelOrder(orderId);
     if (!cancelled) {
       return { success: false, error: 'Order could not be cancelled (not found or already completed)' };
     }
@@ -86,7 +88,7 @@ export class InternalMatchingEngineAdapter implements VenueAdapter {
     fills?: Fill[];
     error?: string;
   }> {
-    const orderStatus = this.tradingEngine.getOrderStatus(orderId);
+    const orderStatus = this.matchingEngine.getOrderStatus(orderId);
 
     if (!orderStatus) {
       return { success: false, error: 'Order not found' };
