@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -49,6 +50,15 @@ const WalletContext = createContext<WalletContextValue | null>(null);
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<WalletState>(INITIAL_STATE);
 
+  /**
+   * Id of the most recent wallet operation.
+   *
+   * Every asynchronous step compares its own id with this one before it
+   * touches the state, so a slow connect (or a session restore) can never
+   * overwrite a newer disconnect: the last operation always wins.
+   */
+  const latestOperation = useRef(0);
+
   const loadBalance = useCallback(async (address: string) => {
     try {
       const funded = await accountExists(address);
@@ -63,12 +73,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   // Restore a previously connected session on mount.
   useEffect(() => {
+    const operation = ++latestOperation.current;
     let cancelled = false;
     (async () => {
       const stored = window.localStorage.getItem(STORAGE_KEY);
       if (!stored) return;
       const active = (await getConnectedAddress()) ?? stored;
-      if (cancelled) return;
+      if (cancelled || operation !== latestOperation.current) return;
       setState((prev) => ({
         ...prev,
         address: active,
@@ -82,11 +93,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [loadBalance]);
 
   const connect = useCallback(async () => {
+    const operation = ++latestOperation.current;
     setState((prev) => ({ ...prev, isConnecting: true, error: null }));
     try {
       // Fail fast with a clear message when no wallet is detected instead of
       // opening the selection modal, which would close itself immediately.
       const wallets = await getAvailableWallets();
+      if (operation !== latestOperation.current) return;
       if (wallets.length === 0) {
         setState((prev) => ({
           ...prev,
@@ -98,6 +111,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
 
       const address = await connectWallet();
+      // The user may have disconnected while the wallet modal was open; that
+      // newer operation wins and this result is dropped.
+      if (operation !== latestOperation.current) return;
       window.localStorage.setItem(STORAGE_KEY, address);
       setState((prev) => ({
         ...prev,
@@ -107,6 +123,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }));
       void loadBalance(address);
     } catch (err) {
+      if (operation !== latestOperation.current) return;
       // Log the raw failure for debugging; surface a message that matches the
       // failure mode (user rejected, no wallet, network problem, …).
       console.error("[useWallet] connect failed:", err);
@@ -119,13 +136,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [loadBalance]);
 
   const disconnect = useCallback(async () => {
+    // Invalidate anything still in flight so a pending connect cannot
+    // re-connect the interface after the user disconnected.
+    ++latestOperation.current;
     await disconnectWallet();
     window.localStorage.removeItem(STORAGE_KEY);
     setState({ ...INITIAL_STATE });
   }, []);
 
   const fund = useCallback(async () => {
-    if (!state.address) return;
+    const address = state.address;
+    if (!address) return;
+    const operation = latestOperation.current;
     if (stellarConfig.network !== "testnet") {
       setState((prev) => ({
         ...prev,
@@ -135,9 +157,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
     setState((prev) => ({ ...prev, error: null }));
     try {
-      await fundWithFriendbot(state.address);
-      await loadBalance(state.address);
+      await fundWithFriendbot(address);
+      if (operation !== latestOperation.current) return;
+      await loadBalance(address);
     } catch (err) {
+      if (operation !== latestOperation.current) return;
       setState((prev) => ({
         ...prev,
         error: err instanceof Error ? err.message : "Funding failed.",
