@@ -82,14 +82,84 @@ export interface DexOrderParams {
 }
 
 /**
+ * Amount used when cancelling a resting offer.
+ *
+ * Stellar deletes an offer when the manage-offer operation carries an amount
+ * of `0`, so a cancellation is the very same operation with a zero amount.
+ */
+const CANCEL_OFFER_AMOUNT = "0";
+
+/**
+ * Price used when cancelling a resting offer.
+ *
+ * The Stellar DEX removes an offer when the manage-offer operation carries
+ * an amount of `0`; the price does not take part in a deletion. The operation
+ * still has to carry a price, and the SDK cannot encode a zero price (it
+ * fails to approximate it), so the smallest price the SDK can encode is used
+ * and named here instead of being an inline magic number.
+ */
+const CANCEL_OFFER_PRICE = "1";
+
+/**
+ * The assets exchanged by a DEX offer, in the ledger's selling/buying order.
+ *
+ * A "sell" of `base` sells `base` and buys `counter`; a "buy" sells `counter`
+ * and buys `base`.
+ */
+function offerAssets(
+  base: AssetRef,
+  counter: AssetRef,
+  side: OrderSide,
+): { selling: Asset; buying: Asset } {
+  return side === "sell"
+    ? { selling: toSdkAsset(base), buying: toSdkAsset(counter) }
+    : { selling: toSdkAsset(counter), buying: toSdkAsset(base) };
+}
+
+/**
+ * Build the manage-offer operation for a DEX order.
+ *
+ * A "buy" is a `manageBuyOffer` and a "sell" a `manageSellOffer`; those are
+ * the only offer operations the Stellar DEX accepts.
+ */
+function buildOfferOperation(params: {
+  side: OrderSide;
+  selling: Asset;
+  buying: Asset;
+  amount: string;
+  price: string;
+  offerId: string;
+}) {
+  const { side, selling, buying, amount, price, offerId } = params;
+  return side === "buy"
+    ? Operation.manageBuyOffer({
+        selling,
+        buying,
+        buyAmount: amount,
+        price,
+        offerId,
+      })
+    : Operation.manageSellOffer({
+        selling,
+        buying,
+        amount,
+        price,
+        offerId,
+      });
+}
+
+/**
  * Build an unsigned Stellar DEX offer transaction.
  *
  * A "buy" of `base` is expressed as a `manageBuyOffer`; a "sell" as a
  * `manageSellOffer`. Both settle natively on the Stellar ledger's order book —
  * no custody, no intermediary.
  */
-export async function buildDexOfferTx(params: DexOrderParams): Promise<Transaction> {
-  const { publicKey, base, counter, side, amount, price, offerId = "0" } = params;
+export async function buildDexOfferTx(
+  params: DexOrderParams,
+): Promise<Transaction> {
+  const { publicKey, base, counter, side, amount, price, offerId = "0" } =
+    params;
 
   assertValidAssetRef(base, "Base asset");
   assertValidAssetRef(counter, "Counter asset");
@@ -99,30 +169,33 @@ export async function buildDexOfferTx(params: DexOrderParams): Promise<Transacti
   }
 
   const source = await horizon.loadAccount(publicKey);
-  const selling = side === "sell" ? toSdkAsset(base) : toSdkAsset(counter);
-  const buying = side === "sell" ? toSdkAsset(counter) : toSdkAsset(base);
+  const { selling, buying } = offerAssets(base, counter, side);
 
-  const operation =
-    side === "buy"
-      ? Operation.manageBuyOffer({
-          selling,
-          buying,
-          buyAmount: amount,
-          price,
-          offerId,
-        })
-      : Operation.manageSellOffer({
-          selling,
-          buying,
-          amount,
-          price,
-          offerId,
-        });
+  const operation = buildOfferOperation({
+    side,
+    selling,
+    buying,
+    amount,
+    price,
+    offerId,
+  });
 
-  return builder(source).addOperation(operation).setTimeout(TIMEOUT_SECONDS).build();
+  return builder(source)
+    .addOperation(operation)
+    .setTimeout(TIMEOUT_SECONDS)
+    .build();
 }
 
-/** Cancel a resting offer by setting its amount to zero. */
+/**
+ * Build an unsigned transaction that cancels a resting DEX offer.
+ *
+ * Stellar has no dedicated "cancel offer" operation: the DEX removes an
+ * offer when the same manage-offer operation is submitted with an amount of
+ * `0` ("Set to 0 if you want to delete an existing offer" in the Stellar
+ * operation reference). The price is not used for a deletion, so this builder
+ * sends the smallest price the SDK can encode and builds the operation
+ * directly instead of re-using the "place an order" builder.
+ */
 export async function buildCancelOfferTx(
   publicKey: string,
   base: AssetRef,
@@ -130,13 +203,27 @@ export async function buildCancelOfferTx(
   side: OrderSide,
   offerId: string,
 ): Promise<Transaction> {
-  return buildDexOfferTx({
-    publicKey,
-    base,
-    counter,
+  assertValidAssetRef(base, "Base asset");
+  assertValidAssetRef(counter, "Counter asset");
+
+  if (isNative(base) && isNative(counter)) {
+    throw new Error("Base and counter assets cannot both be native XLM.");
+  }
+
+  const source = await horizon.loadAccount(publicKey);
+  const { selling, buying } = offerAssets(base, counter, side);
+
+  const operation = buildOfferOperation({
     side,
-    amount: "0",
-    price: "1",
+    selling,
+    buying,
+    amount: CANCEL_OFFER_AMOUNT,
+    price: CANCEL_OFFER_PRICE,
     offerId,
   });
+
+  return builder(source)
+    .addOperation(operation)
+    .setTimeout(TIMEOUT_SECONDS)
+    .build();
 }

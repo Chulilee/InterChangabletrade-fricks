@@ -1,6 +1,7 @@
 import { Account, Transaction } from "@stellar/stellar-sdk";
 import { horizon } from "@/lib/stellar/horizon";
 import {
+  buildCancelOfferTx,
   buildDexOfferTx,
   type DexOrderParams,
 } from "@/lib/stellar/dex";
@@ -126,6 +127,122 @@ describe("buildDexOfferTx asset validation", () => {
         }),
       ),
     ).rejects.toThrow();
+
+    expect(loadAccountMock).not.toHaveBeenCalled();
+  });
+});
+
+/** The single manage-sell-offer operation of a built transaction. */
+function sellOfferOf(tx: Transaction) {
+  const op = tx.operations[0];
+  if (op.type !== "manageSellOffer") {
+    throw new Error(`expected a manageSellOffer operation, got ${op.type}`);
+  }
+  return op;
+}
+
+/** The single manage-buy-offer operation of a built transaction. */
+function buyOfferOf(tx: Transaction) {
+  const op = tx.operations[0];
+  if (op.type !== "manageBuyOffer") {
+    throw new Error(`expected a manageBuyOffer operation, got ${op.type}`);
+  }
+  return op;
+}
+
+describe("buildCancelOfferTx", () => {
+  const base = { code: "USDC", issuer: USDC_ISSUER };
+  const counter = { code: "XLM", issuer: null };
+
+  it("cancels a sell offer with a zero amount", async () => {
+    const tx = await buildCancelOfferTx(
+      PUBLIC_KEY,
+      base,
+      counter,
+      "sell",
+      "42",
+    );
+
+    expect(tx).toBeInstanceOf(Transaction);
+    expect(tx.operations).toHaveLength(1);
+
+    const op = sellOfferOf(tx);
+    expect(Number(op.amount)).toBe(0);
+    // The price does not delete the offer, the zero amount does; the SDK
+    // cannot encode a zero price, so the smallest encodable one is used.
+    expect(Number(op.price)).toBe(1);
+    expect(op.offerId).toBe("42");
+  });
+
+  it("cancels a buy offer with a zero buy amount", async () => {
+    const tx = await buildCancelOfferTx(
+      PUBLIC_KEY,
+      base,
+      counter,
+      "buy",
+      "7",
+    );
+
+    const op = buyOfferOf(tx);
+    expect(Number(op.buyAmount)).toBe(0);
+    expect(Number(op.price)).toBe(1);
+    expect(op.offerId).toBe("7");
+  });
+
+  it("keeps the assets of the offer it cancels", async () => {
+    const tx = await buildCancelOfferTx(
+      PUBLIC_KEY,
+      base,
+      counter,
+      "sell",
+      "1",
+    );
+
+    const op = sellOfferOf(tx);
+    expect(op.selling.getCode()).toBe("USDC");
+    expect(op.selling.getIssuer()).toBe(USDC_ISSUER);
+    expect(op.buying.isNative()).toBe(true);
+  });
+
+  it("mirrors the asset orientation of the order it cancels", async () => {
+    const tx = await buildCancelOfferTx(
+      PUBLIC_KEY,
+      base,
+      counter,
+      "buy",
+      "1",
+    );
+
+    const op = buyOfferOf(tx);
+    expect(op.buying.getCode()).toBe("USDC");
+    expect(op.buying.getIssuer()).toBe(USDC_ISSUER);
+    expect(op.selling.isNative()).toBe(true);
+  });
+
+  it("rejects an invalid asset before loading the account", async () => {
+    await expect(
+      buildCancelOfferTx(
+        PUBLIC_KEY,
+        { code: "USDC", issuer: "not-a-stellar-account" },
+        counter,
+        "sell",
+        "1",
+      ),
+    ).rejects.toThrow(/issuer/);
+
+    expect(loadAccountMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects base and counter both native XLM", async () => {
+    await expect(
+      buildCancelOfferTx(
+        PUBLIC_KEY,
+        { code: "XLM", issuer: null },
+        { code: "XLM", issuer: null },
+        "sell",
+        "1",
+      ),
+    ).rejects.toThrow("cannot both be native XLM");
 
     expect(loadAccountMock).not.toHaveBeenCalled();
   });
