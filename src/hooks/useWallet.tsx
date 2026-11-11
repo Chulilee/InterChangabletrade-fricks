@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import type { WalletContextValue, WalletState } from "@/types/wallet";
 import {
   classifyConnectError,
@@ -18,19 +25,29 @@ import { stellarConfig } from "@/lib/stellar/config";
 
 const STORAGE_KEY = "ict.wallet.address";
 
+const INITIAL_STATE: WalletState = {
+  address: null,
+  isConnected: false,
+  isConnecting: false,
+  xlmBalance: null,
+  error: null,
+};
+
+const WalletContext = createContext<WalletContextValue | null>(null);
+
 /**
- * Wallet hook backed by Stellar Wallets Kit. `connect()` opens the real
- * Freighter / xBull / Albedo modal and returns an on-chain account; balances are
- * read from Horizon on the configured network (Testnet by default).
+ * Wallet provider backed by Stellar Wallets Kit. `connect()` opens the real
+ * Freighter / xBull / Albedo modal and returns an on-chain account; balances
+ * are read from Horizon on the configured network (Testnet by default).
+ *
+ * The state lives here instead of in the hook, so every consumer — the
+ * navigation bar, the wallet button, the trade panel — reads the same value
+ * and re-renders together when the wallet connects or disconnects. A hook
+ * that kept its own copy of the state left each consumer showing whatever
+ * it happened to know, which is how stale connection states appeared.
  */
-export function useWallet(): WalletContextValue {
-  const [state, setState] = useState<WalletState>({
-    address: null,
-    isConnected: false,
-    isConnecting: false,
-    xlmBalance: null,
-    error: null,
-  });
+export function WalletProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<WalletState>(INITIAL_STATE);
 
   const loadBalance = useCallback(async (address: string) => {
     try {
@@ -104,13 +121,7 @@ export function useWallet(): WalletContextValue {
   const disconnect = useCallback(async () => {
     await disconnectWallet();
     window.localStorage.removeItem(STORAGE_KEY);
-    setState({
-      address: null,
-      isConnected: false,
-      isConnecting: false,
-      xlmBalance: null,
-      error: null,
-    });
+    setState({ ...INITIAL_STATE });
   }, []);
 
   const fund = useCallback(async () => {
@@ -138,5 +149,30 @@ export function useWallet(): WalletContextValue {
     if (state.address) await loadBalance(state.address);
   }, [state.address, loadBalance]);
 
-  return { ...state, connect, disconnect, fund, refresh };
+  const value: WalletContextValue = {
+    ...state,
+    connect,
+    disconnect,
+    fund,
+    refresh,
+  };
+
+  return (
+    <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
+  );
+}
+
+/**
+ * Read the shared wallet state.
+ *
+ * Throws when it is used outside a {@link WalletProvider}: without the
+ * provider every consumer would keep a private copy of the state, which is
+ * exactly the stale-state bug this provider replaces.
+ */
+export function useWallet(): WalletContextValue {
+  const ctx = useContext(WalletContext);
+  if (!ctx) {
+    throw new Error("useWallet must be used within a WalletProvider");
+  }
+  return ctx;
 }
