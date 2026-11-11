@@ -92,11 +92,13 @@ const CANCEL_OFFER_AMOUNT = "0";
 /**
  * Price used when cancelling a resting offer.
  *
- * The price does not take part in a deletion — the zero amount is what
- * removes the offer from the order book — so a cancellation sends a neutral
- * `0` instead of an invented price such as `1`.
+ * The Stellar DEX removes an offer when the manage-offer operation carries
+ * an amount of `0`; the price does not take part in a deletion. The operation
+ * still has to carry a price, and the SDK cannot encode a zero price (it
+ * fails to approximate it), so the smallest price the SDK can encode is used
+ * and named here instead of being an inline magic number.
  */
-const CANCEL_OFFER_PRICE = "0";
+const CANCEL_OFFER_PRICE = "1";
 
 /**
  * The assets exchanged by a DEX offer, in the ledger's selling/buying order.
@@ -191,8 +193,8 @@ export async function buildDexOfferTx(
  * offer when the same manage-offer operation is submitted with an amount of
  * `0` ("Set to 0 if you want to delete an existing offer" in the Stellar
  * operation reference). The price is not used for a deletion, so this builder
- * sends a neutral `0` rather than an invented price, and it builds the
- * operation directly instead of re-using the "place an order" builder.
+ * sends the smallest price the SDK can encode and builds the operation
+ * directly instead of re-using the "place an order" builder.
  */
 export async function buildCancelOfferTx(
   publicKey: string,

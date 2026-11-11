@@ -154,7 +154,7 @@ describe("buildCancelOfferTx", () => {
   const base = { code: "USDC", issuer: USDC_ISSUER };
   const counter = { code: "XLM", issuer: null };
 
-  it("cancels a sell offer with a zero amount and no arbitrary price", async () => {
+  it("cancels a sell offer with a zero amount", async () => {
     const tx = await buildCancelOfferTx(
       PUBLIC_KEY,
       base,
@@ -168,7 +168,9 @@ describe("buildCancelOfferTx", () => {
 
     const op = sellOfferOf(tx);
     expect(Number(op.amount)).toBe(0);
-    expect(Number(op.price)).toBe(0);
+    // The price does not delete the offer, the zero amount does; the SDK
+    // cannot encode a zero price, so the smallest encodable one is used.
+    expect(Number(op.price)).toBe(1);
     expect(op.offerId).toBe("42");
   });
 
@@ -183,7 +185,7 @@ describe("buildCancelOfferTx", () => {
 
     const op = buyOfferOf(tx);
     expect(Number(op.buyAmount)).toBe(0);
-    expect(Number(op.price)).toBe(0);
+    expect(Number(op.price)).toBe(1);
     expect(op.offerId).toBe("7");
   });
 
