@@ -82,6 +82,23 @@ export interface DexOrderParams {
 }
 
 /**
+ * Amount used when cancelling a resting offer.
+ *
+ * Stellar deletes an offer when the manage-offer operation carries an amount
+ * of `0`, so a cancellation is the very same operation with a zero amount.
+ */
+const CANCEL_OFFER_AMOUNT = "0";
+
+/**
+ * Price used when cancelling a resting offer.
+ *
+ * The price does not take part in a deletion — the zero amount is what
+ * removes the offer from the order book — so a cancellation sends a neutral
+ * `0` instead of an invented price such as `1`.
+ */
+const CANCEL_OFFER_PRICE = "0";
+
+/**
  * The assets exchanged by a DEX offer, in the ledger's selling/buying order.
  *
  * A "sell" of `base` sells `base` and buys `counter`; a "buy" sells `counter`
@@ -167,7 +184,16 @@ export async function buildDexOfferTx(
     .build();
 }
 
-/** Cancel a resting offer by setting its amount to zero. */
+/**
+ * Build an unsigned transaction that cancels a resting DEX offer.
+ *
+ * Stellar has no dedicated "cancel offer" operation: the DEX removes an
+ * offer when the same manage-offer operation is submitted with an amount of
+ * `0` ("Set to 0 if you want to delete an existing offer" in the Stellar
+ * operation reference). The price is not used for a deletion, so this builder
+ * sends a neutral `0` rather than an invented price, and it builds the
+ * operation directly instead of re-using the "place an order" builder.
+ */
 export async function buildCancelOfferTx(
   publicKey: string,
   base: AssetRef,
@@ -175,13 +201,27 @@ export async function buildCancelOfferTx(
   side: OrderSide,
   offerId: string,
 ): Promise<Transaction> {
-  return buildDexOfferTx({
-    publicKey,
-    base,
-    counter,
+  assertValidAssetRef(base, "Base asset");
+  assertValidAssetRef(counter, "Counter asset");
+
+  if (isNative(base) && isNative(counter)) {
+    throw new Error("Base and counter assets cannot both be native XLM.");
+  }
+
+  const source = await horizon.loadAccount(publicKey);
+  const { selling, buying } = offerAssets(base, counter, side);
+
+  const operation = buildOfferOperation({
     side,
-    amount: "0",
-    price: "1",
+    selling,
+    buying,
+    amount: CANCEL_OFFER_AMOUNT,
+    price: CANCEL_OFFER_PRICE,
     offerId,
   });
+
+  return builder(source)
+    .addOperation(operation)
+    .setTimeout(TIMEOUT_SECONDS)
+    .build();
 }
