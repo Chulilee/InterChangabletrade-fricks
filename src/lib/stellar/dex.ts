@@ -82,14 +82,65 @@ export interface DexOrderParams {
 }
 
 /**
+ * The assets exchanged by a DEX offer, in the ledger's selling/buying order.
+ *
+ * A "sell" of `base` sells `base` and buys `counter`; a "buy" sells `counter`
+ * and buys `base`.
+ */
+function offerAssets(
+  base: AssetRef,
+  counter: AssetRef,
+  side: OrderSide,
+): { selling: Asset; buying: Asset } {
+  return side === "sell"
+    ? { selling: toSdkAsset(base), buying: toSdkAsset(counter) }
+    : { selling: toSdkAsset(counter), buying: toSdkAsset(base) };
+}
+
+/**
+ * Build the manage-offer operation for a DEX order.
+ *
+ * A "buy" is a `manageBuyOffer` and a "sell" a `manageSellOffer`; those are
+ * the only offer operations the Stellar DEX accepts.
+ */
+function buildOfferOperation(params: {
+  side: OrderSide;
+  selling: Asset;
+  buying: Asset;
+  amount: string;
+  price: string;
+  offerId: string;
+}) {
+  const { side, selling, buying, amount, price, offerId } = params;
+  return side === "buy"
+    ? Operation.manageBuyOffer({
+        selling,
+        buying,
+        buyAmount: amount,
+        price,
+        offerId,
+      })
+    : Operation.manageSellOffer({
+        selling,
+        buying,
+        amount,
+        price,
+        offerId,
+      });
+}
+
+/**
  * Build an unsigned Stellar DEX offer transaction.
  *
  * A "buy" of `base` is expressed as a `manageBuyOffer`; a "sell" as a
  * `manageSellOffer`. Both settle natively on the Stellar ledger's order book —
  * no custody, no intermediary.
  */
-export async function buildDexOfferTx(params: DexOrderParams): Promise<Transaction> {
-  const { publicKey, base, counter, side, amount, price, offerId = "0" } = params;
+export async function buildDexOfferTx(
+  params: DexOrderParams,
+): Promise<Transaction> {
+  const { publicKey, base, counter, side, amount, price, offerId = "0" } =
+    params;
 
   assertValidAssetRef(base, "Base asset");
   assertValidAssetRef(counter, "Counter asset");
@@ -99,27 +150,21 @@ export async function buildDexOfferTx(params: DexOrderParams): Promise<Transacti
   }
 
   const source = await horizon.loadAccount(publicKey);
-  const selling = side === "sell" ? toSdkAsset(base) : toSdkAsset(counter);
-  const buying = side === "sell" ? toSdkAsset(counter) : toSdkAsset(base);
+  const { selling, buying } = offerAssets(base, counter, side);
 
-  const operation =
-    side === "buy"
-      ? Operation.manageBuyOffer({
-          selling,
-          buying,
-          buyAmount: amount,
-          price,
-          offerId,
-        })
-      : Operation.manageSellOffer({
-          selling,
-          buying,
-          amount,
-          price,
-          offerId,
-        });
+  const operation = buildOfferOperation({
+    side,
+    selling,
+    buying,
+    amount,
+    price,
+    offerId,
+  });
 
-  return builder(source).addOperation(operation).setTimeout(TIMEOUT_SECONDS).build();
+  return builder(source)
+    .addOperation(operation)
+    .setTimeout(TIMEOUT_SECONDS)
+    .build();
 }
 
 /** Cancel a resting offer by setting its amount to zero. */
