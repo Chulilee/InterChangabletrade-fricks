@@ -41,3 +41,11 @@ src/
 - Presentational components live in `components/`; data fetching stays in
   `services/`.
 - Run `npm run lint` and `npm run build` before opening a pull request.
+
+## Code of conduct
+
+Participation in this project is governed by our
+[Code of Conduct](CODE_OF_CONDUCT.md) (Contributor Covenant v2.1).
+By contributing you agree to uphold it; abusive, harassing, or otherwise
+unacceptable behavior can be reported by opening a private security
+advisory on GitHub.
