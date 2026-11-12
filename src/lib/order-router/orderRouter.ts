@@ -9,7 +9,7 @@ import {
   RetryPolicy,
 } from './types';
 import { Order, Fill, TradeEvent, OrderStatus } from '@/types/trading';
-import { SplitEqualStrategy } from './strategies/splitEqualStrategy';
+import { DEFAULT_ROUTING_STRATEGY_ID, resolveStrategy } from './strategies';
 
 /**
  * Main OrderRouter class that implements the routing layer
@@ -27,11 +27,17 @@ export class OrderRouter {
 
   constructor(config: RouterConfig) {
     this.config = config;
-    this.defaultStrategy = new SplitEqualStrategy();
-    
-    // Register default strategy
-    this.registerStrategy('split-equal', this.defaultStrategy);
-    
+    // Fail fast on an unknown configured strategy instead of silently
+    // routing with the wrong algorithm (issue #78).
+    const configuredId =
+      typeof config.routingStrategy === 'string' && config.routingStrategy.trim().length > 0
+        ? config.routingStrategy.trim()
+        : DEFAULT_ROUTING_STRATEGY_ID;
+    this.defaultStrategy = resolveStrategy(configuredId);
+
+    // Register the configured default strategy
+    this.registerStrategy(configuredId, this.defaultStrategy);
+
     // Start reconciliation loop
     this.startReconciliation();
   }
@@ -91,6 +97,9 @@ export class OrderRouter {
 
   /**
    * Build a routing plan for an order
+   *
+   * @param strategyName - Optional registered strategy id. Unknown ids
+   *   throw an Error listing the registered strategies.
    */
   buildRoutingPlan(order: Order, strategyName?: string): RoutingPlan {
     // Get available venues that are enabled
@@ -100,10 +109,23 @@ export class OrderRouter {
       throw new Error('No enabled venues available for routing');
     }
 
-    // Get the routing strategy
-    const strategy = strategyName 
-      ? this.strategies.get(strategyName) || this.defaultStrategy
-      : this.defaultStrategy;
+    // Get the routing strategy (issue #78): an explicit unknown name is a
+    // configuration error, so throw with the list of registered strategies
+    // instead of silently routing with the wrong algorithm.
+    let strategy: RoutingStrategy;
+    if (strategyName !== undefined) {
+      const registered = this.strategies.get(strategyName);
+      if (!registered) {
+        throw new Error(
+          `Unknown routing strategy "${strategyName}". Registered strategies: ${[
+            ...this.strategies.keys(),
+          ].join(", ")}`,
+        );
+      }
+      strategy = registered;
+    } else {
+      strategy = this.defaultStrategy;
+    }
 
     // Build legs using the strategy
     const legs = strategy.buildPlan(order, availableVenues);
