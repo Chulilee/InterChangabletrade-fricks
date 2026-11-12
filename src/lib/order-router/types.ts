@@ -150,6 +150,16 @@ export interface RouterConfig {
   retryPolicy: RetryPolicy;
   reconciliationIntervalMs: number;
   enableFailover: boolean;
+  /**
+   * Identifier of the routing strategy to use for orders submitted through
+   * this router. Built-in ids: `'split-equal'` (default — equal split
+   * across venues) and `'weighted-split'` (proportional to venue
+   * `weight`). Resolved at router construction; an unknown id throws
+   * instead of silently falling back. Custom strategies can be registered
+   * on the router with `registerStrategy` and selected per call with
+   * `buildRoutingPlan(order, strategyName)`.
+   */
+  routingStrategy?: string;
 }
 
 /**

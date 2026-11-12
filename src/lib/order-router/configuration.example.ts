@@ -96,6 +96,11 @@ export function setupOrderRouter(tradingEngine: TradingEngine): OrderRouter {
     // Reconciliation configuration
     reconciliationIntervalMs: 1000, // Check external orders every second
     enableFailover: true, // Automatically failover to other venues if one fails
+
+    // Strategy selection (issue #78): 'split-equal' (default — equal split
+    // across venues) or 'weighted-split' (proportional to each venue's
+    // `weight`). Unknown ids throw at construction.
+    routingStrategy: 'split-equal',
   });
 
   // 3. Register all adapters with the router

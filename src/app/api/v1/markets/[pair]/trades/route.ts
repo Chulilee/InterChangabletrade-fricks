@@ -8,6 +8,7 @@ import {
   withMarketDataCacheHeaders,
 } from '@/lib/api-middleware';
 import { getTradingEngine } from '@/lib/trading-instance';
+import { buildOffsetPagination } from '@/lib/pagination';
 
 /**
  * @openapi
@@ -79,14 +80,23 @@ import { getTradingEngine } from '@/lib/trading-instance';
  *                 metadata:
  *                   type: object
  *                   properties:
+ *                     apiVersion:
+ *                       type: string
+ *                       example: v1
  *                     total:
  *                       type: integer
+ *                       description: Total trades across all pages (legacy flat field)
  *                     page:
  *                       type: integer
+ *                       description: Current page, 1-indexed (legacy flat field)
  *                     limit:
  *                       type: integer
+ *                       description: Trades per page (legacy flat field)
  *                     totalPages:
  *                       type: integer
+ *                       description: Total pages for the requested limit (legacy flat field)
+ *                     pagination:
+ *                       $ref: '#/components/schemas/Pagination'
  *                     timestamp:
  *                       type: string
  *       400:
@@ -133,13 +143,26 @@ export async function GET(
   const engine = getTradingEngine();
   const result = engine.getTrades(pair, page, limit);
 
+  // Standard pagination block (issue #77): clients should prefer this
+  // over the legacy flat fields. Navigation links point at this same
+  // endpoint with `page`/`limit` swapped for the target page.
+  const pagination = buildOffsetPagination({
+    total: result.total,
+    page: result.page,
+    limit: result.limit,
+    baseUrl: request.url,
+  });
+
   const etag = computeETag(result.trades);
   const response = createSuccessResponse(result.trades, {
     apiVersion: 'v1',
+    // Legacy flat fields, kept for backwards compatibility.
     total: result.total,
     page: result.page,
     limit: result.limit,
     totalPages: result.totalPages,
+    // Standard pagination format (RFC 8288-style relations).
+    pagination,
   });
 
   return withMarketDataCacheHeaders(response, etag, request);
