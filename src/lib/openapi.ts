@@ -70,6 +70,29 @@ const swaggerOptions = {
             orderCount: { type: 'integer' },
           },
         },
+        PaginationLinks: {
+          type: 'object',
+          description: 'RFC 8288-style navigation links for a paginated list. Nulls at the boundaries.',
+          properties: {
+            first: { type: 'string', nullable: true, description: 'Absolute URL of the first page' },
+            prev: { type: 'string', nullable: true, description: 'Absolute URL of the previous page, null on the first page' },
+            next: { type: 'string', nullable: true, description: 'Absolute URL of the next page, null on the last page' },
+            last: { type: 'string', nullable: true, description: 'Absolute URL of the last page, null when there are no results' },
+          },
+        },
+        Pagination: {
+          type: 'object',
+          description: 'Standard v1 offset-pagination metadata (see src/lib/pagination.ts)',
+          properties: {
+            total: { type: 'integer', description: 'Total number of items across all pages' },
+            page: { type: 'integer', minimum: 1, description: 'Current page, 1-indexed' },
+            limit: { type: 'integer', minimum: 1, description: 'Items per page' },
+            totalPages: { type: 'integer', description: 'Number of pages needed to cover total (0 when total is 0)' },
+            hasPreviousPage: { type: 'boolean', description: 'True when page > 1' },
+            hasNextPage: { type: 'boolean', description: 'True when page < totalPages' },
+            links: { $ref: '#/components/schemas/PaginationLinks' },
+          },
+        },
         Trade: {
           type: 'object',
           properties: {
